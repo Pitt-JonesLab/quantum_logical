@@ -17,6 +17,8 @@ import numpy as np
 from qutip import Qobj, tensor
 from qutip.states import basis
 
+from quantum_logical.unitary_util import ImplicitUnitaryGate
+
 zero = basis(2, 0)  # |0>
 one = basis(2, 1)  # |1>
 p_ge = (basis(2, 0) + basis(2, 1)).unit()  # |+_{ge}>
@@ -82,11 +84,13 @@ class Ancilla:
     @property
     def detection_operator(self) -> Qobj:
         # |1> \otimes |error_state>  <0| \otimes <error_state|
-        return sum(
-            [
-                tensor(one, error_state) * tensor(zero, error_state).dag()
-                for error_state in self.error_states
-            ]
+        return ImplicitUnitaryGate(
+            sum(
+                [
+                    tensor(one, error_state) * tensor(zero, error_state).dag()
+                    for error_state in self.error_states
+                ]
+            )
         )
 
 
@@ -112,6 +116,7 @@ class LogicalEncoding:
             QuantumCircuit: Subroutine for detecting errors using the ancilla qubits.
         """
         # Implementation details depend on the specific error-detection strategy.
+        pass
 
 
 class DualRail(LogicalEncoding):
@@ -134,8 +139,9 @@ class DualRail(LogicalEncoding):
         logical1 = tensor(basis(2, 1), basis(2, 0))
         # to protect against photon loss, define error state as |00>
         loss_state = tensor(basis(2, 0), basis(2, 0))
+        double_state = tensor(basis(2, 1), basis(2, 1))
         logical_basis = LogicalBasis(logical0, logical1)
-        ancilla = Ancilla(loss_state)
+        ancilla = Ancilla(loss_state, double_state)
         super().__init__(logical_basis, ancilla)
 
 

@@ -48,12 +48,13 @@ class ImplicitUnitaryGate(UnitaryGate):
         # Add reverse terms (e.g., if |a><b| exists, add |b><a|)
         for i in range(operator.shape[0]):
             for j in range(operator.shape[1]):
-                if operator[i, j] != 0:
-                    operator[j, i] = operator[i, j]
+                if i != j and operator[i, j] != 0:
+                    if operator[j, i] == 0:
+                        operator[j, i] = operator[i, j]
 
         # Fill missing diagonal terms for unitarity
         for i in range(operator.shape[0]):
-            missing_term = 1 - operator[i, :].sum()
+            missing_term = 1 - sum(a * np.conj(a) for a in operator[i, :])
             operator[i, i] += missing_term
 
         return operator
