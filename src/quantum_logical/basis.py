@@ -145,8 +145,8 @@ class DualRail(LogicalEncoding):
         super().__init__(logical_basis, ancilla)
 
 
-class TransmonQuditWithAncilla(LogicalBasis):
-    """Transmon qudit encoding with error ancillas.
+class SNAILConcatWithAncilla(LogicalEncoding):
+    """SNAIL concatenated erasure encoding with error ancillas.
 
     The logical basis is defined as:
         |0>_L = |g+f, g+f, g+f>
@@ -158,41 +158,17 @@ class TransmonQuditWithAncilla(LogicalBasis):
     def __init__(self):
         logical0 = tensor(p_gf, p_gf, p_gf)
         logical1 = tensor(m_gf, m_gf, m_gf)
+        logical_basis = LogicalBasis(logical0, logical1)
 
-        # Define ancillas for error detection and correction
-        ancilla1 = Ancilla(
-            detection_operator=..., correction_operator=...
-        )  # Define appropriately
-        ancilla2 = Ancilla(
-            detection_operator=..., correction_operator=...
-        )  # Define appropriately
+        # # Define ancillas for error detection and correction
+        # ancilla1 = Ancilla(
+        #     detection_operator=..., correction_operator=...
+        # )  # Define appropriately
+        # ancilla2 = Ancilla(
+        #     detection_operator=..., correction_operator=...
+        # )  # Define appropriately
+        # ancilla3 = Ancilla(
+        #     detection_operator=..., correction_operator=...
+        # )  # Define appropriately
 
-        super().__init__(logical0, logical1, ancilla1, ancilla2)
-
-
-class SNAILConcatWithAncilla(LogicalBasis):
-    """SNAIL concatenated erasure encoding with error ancillas.
-
-    The logical basis is defined as:
-        |0>_L = |g+f, g+f, g+f, g+f>
-        |1>_L = |g-f, g-f, g-f, g-f>
-
-    Includes ancillas for detecting specific errors.
-    """
-
-    def __init__(self):
-        logical0 = tensor(p_gf, p_gf, p_gf, p_gf)
-        logical1 = tensor(m_gf, m_gf, m_gf, m_gf)
-
-        # Define ancillas for error detection and correction
-        ancilla1 = Ancilla(
-            detection_operator=..., correction_operator=...
-        )  # Define appropriately
-        ancilla2 = Ancilla(
-            detection_operator=..., correction_operator=...
-        )  # Define appropriately
-        ancilla3 = Ancilla(
-            detection_operator=..., correction_operator=...
-        )  # Define appropriately
-
-        super().__init__(logical0, logical1, ancilla1, ancilla2, ancilla3)
+        super().__init__(logical_basis)  # , ancilla1, ancilla2, ancilla3)
