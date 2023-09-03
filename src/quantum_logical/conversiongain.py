@@ -47,7 +47,7 @@ class Interaction:
 
 
 class QubitInteraction(Interaction):
-    def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0):
+    def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=2):
         """Initialize the qubit interaction parameters.
 
         Args:
@@ -56,7 +56,18 @@ class QubitInteraction(Interaction):
             phi_c: Phase for coupling.
             phi_g: Phase for gate.
         """
+        self.transmon_levels = transmon_levels
         self.set_parameters(gc, gg, phi_c, phi_g)
+
+    def __str__(self):
+        latex_str = (
+            r"\hat{H} = "
+            + f"{self.gc:.2f}"
+            + r" (a b^\dagger + a^\dagger b) + "
+            + f"{self.gg:.2f}"
+            + r" (a b + a^\dagger b^\dagger)"
+        )
+        return latex_str
 
     def set_parameters(self, gc, gg, phi_c=0.0, phi_g=0.0):
         """Set the qubit interaction parameters.
@@ -82,11 +93,12 @@ class QubitInteraction(Interaction):
         Returns:
             The constructed Hamiltonian.
         """
-        a = qutip.operators.create(N=2)
+        transmon_levels = self.transmon_levels
+        a = qutip.operators.create(N=transmon_levels)
         if A is None:
-            A = qutip.tensor(a, qutip.operators.identity(2))
+            A = qutip.tensor(a, qutip.operators.identity(transmon_levels))
         if B is None:
-            B = qutip.tensor(qutip.operators.identity(2), a)
+            B = qutip.tensor(qutip.operators.identity(transmon_levels), a)
 
         H_c = (
             np.exp(1j * self.phi_c) * A * B.dag()
