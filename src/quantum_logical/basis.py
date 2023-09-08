@@ -115,8 +115,29 @@ class LogicalEncoding:
         Returns:
             QuantumCircuit: Subroutine for detecting errors using the ancilla qubits.
         """
-        # Implementation details depend on the specific error-detection strategy.
-        pass
+        raise NotImplementedError
+
+
+class PhaseReptition(LogicalEncoding):
+    """3-bit phase repetition encoding.
+
+    |0>_L = |+++> |1>_L = |--->
+    """
+
+    def __init__(self):
+        logical0 = tensor(p_ge, p_ge, p_ge)
+        logical1 = tensor(m_ge, m_ge, m_ge)
+        logical_basis = LogicalBasis(logical0, logical1)
+        phase_flips = [
+            tensor(m_ge, p_ge, p_ge),
+            tensor(p_ge, m_ge, p_ge),
+            tensor(p_ge, p_ge, m_ge),
+        ]
+        ancillae = Ancilla(*phase_flips)
+        super().__init__(logical_basis, ancillae)
+
+    def detection_subroutine(self):
+        return super().detection_subroutine()
 
 
 class DualRail(LogicalEncoding):
