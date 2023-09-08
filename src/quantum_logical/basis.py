@@ -145,6 +145,44 @@ class DualRail(LogicalEncoding):
         super().__init__(logical_basis, ancilla)
 
 
+class VSLQ(LogicalEncoding):
+    """Very small logical qubit encoding.
+
+    The logical basis is defined as:
+        |0>_L = |g+f, g+f>
+        |1>_L = |g-f, g-f>
+
+    Protects against a single photon loss.
+    Reference: https://arxiv.org/pdf/1510.06117.pdf
+    """
+
+    def __init__(self):
+        logical0 = tensor(p_gf, p_gf)
+        logical1 = tensor(m_gf, m_gf)
+        logical_basis = LogicalBasis(logical0, logical1)
+        super().__init__(logical_basis)
+
+
+class StarCode(LogicalEncoding):
+    """Autonomous quantum error correction with a star code.
+
+    The logical basis is defined as:
+        |0>_L = |gf> - |fg> = |g-f, f-g>
+        |1>_L = |gg> - |ff> = |g-f, g-f>
+
+    Reference: https://arxiv.org/pdf/2302.06707.pdf
+
+    Key idea in this paper is that we can use |ee> as intermediate state,
+    so can use only 2-photon drives rather than the 4-photon drives.
+    """
+
+    def __init__(self):
+        logical0 = tensor(p_gf, m_gf) - tensor(m_gf, p_gf)
+        logical1 = tensor(p_gf, p_gf) - tensor(m_gf, m_gf)
+        logical_basis = LogicalBasis(logical0, logical1)
+        super().__init__(logical_basis)
+
+
 class SNAILConcatWithAncilla(LogicalEncoding):
     """SNAIL concatenated erasure encoding with error ancillas.
 
