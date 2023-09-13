@@ -1,227 +1,188 @@
-import ipywidgets as widgets
+from abc import ABC
+from math import prod
+from typing import List
+
 import numpy as np
 import qutip
 
-# import matplotlib.pyplot as plt
-# import rustworkx as rx
-# from rustworkx.visualization import mpl_draw
-from qiskit.circuit import Gate, Parameter, QuantumCircuit
+from quantum_logical.qubitoperator import QubitOperator, Transition
 
 
 class Hamiltonian:
-    def __init__(self, H):
-        """Initialize the Hamiltonian.
-
-        Args:
-            H: A function that returns the Hamiltonian matrix.
-        """
+    def __init__(self, H: qutip.Qobj):
         self.H = H
 
-    def construct_U(self, t) -> qutip.Qobj:
+    def construct_U(self, t: float) -> qutip.Qobj:
         """Construct the unitary evolution operator for time t.
 
         Args:
-            t: Time.
+            t (float): Time.
 
         Returns:
-            Unitary operator for the given time.
+            qutip.Qobj: Unitary operator for the given time.
         """
-        return (-1j * t * self.H).expm()
-
-    @property
-    def unitary(self, t):
-        return self.construct_U(t)
+        return (-1j * self.H * t).expm()
 
 
-class Interaction:
-    def construct_U(self, t) -> qutip.Qobj:
+class ConversionGainInteraction(ABC):
+    def __init__(self, terms, coefficients, transmon_levels=2):
+        """Initialize the n-wave interaction parameters.
+
+        Args:
+            terms (list of list of str): List of operator terms like [['a', 'b_dag'], ['a_dag', 'b']].
+            coefficients (list of complex): List of coefficients for each term.
+            transmon_levels (int, optional): Number of transmon levels. Defaults to 2.
+        """
+        self.terms = terms
+        self.coefficients = coefficients
+        self.transmon_levels = transmon_levels
+        self.qubit_to_index = {
+            op[0]: idx
+            for idx, op in enumerate(
+                set(op.qubit_label for term in terms for op in term)
+            )
+        }
+
+    def unitary(self, t: float) -> qutip.Qobj:
         """Construct the unitary evolution operator for time t.
 
         Args:
-            t: Time.
+            t (float): Time.
 
         Returns:
-            Unitary operator for the given time.
+            qutip.Qobj: Unitary operator for the given time.
         """
         return self.construct_H().construct_U(t)
 
-
-class QubitInteraction(Interaction):
-    def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=2):
-        """Initialize the qubit interaction parameters.
-
-        Args:
-            gc: Coupling strength.
-            gg: Gate strength.
-            phi_c: Phase for coupling.
-            phi_g: Phase for gate.
-        """
-        self.transmon_levels = transmon_levels
-        self.set_parameters(gc, gg, phi_c, phi_g)
-
-    def __str__(self):
-        latex_str = (
-            r"\hat{H} = "
-            + f"{self.gc:.2f}"
-            + r" (a b^\dagger + a^\dagger b) + "
-            + f"{self.gg:.2f}"
-            + r" (a b + a^\dagger b^\dagger)"
-        )
-        return latex_str
-
-    def set_parameters(self, gc, gg, phi_c=0.0, phi_g=0.0):
-        """Set the qubit interaction parameters.
-
-        Args:
-            gc: Coupling strength.
-            gg: Gate strength.
-            phi_c: Phase for coupling.
-            phi_g: Phase for gate.
-        """
-        # Convert to Parameter objects if input is string, else use as-is
-        self.gc = Parameter(gc) if isinstance(gc, str) else gc
-        self.gg = Parameter(gg) if isinstance(gg, str) else gg
-        self.phi_c = Parameter(phi_c) if isinstance(phi_c, str) else phi_c
-        self.phi_g = Parameter(phi_g) if isinstance(phi_g, str) else phi_g
-
-    def construct_H(self, A=None, B=None) -> Hamiltonian:
-        """Construct the Hamiltonian for the interaction.
-
-        Args:
-            A, B: Operator terms for the Hamiltonian.
-
-        Returns:
-            The constructed Hamiltonian.
-        """
-        transmon_levels = self.transmon_levels
-        a = qutip.operators.create(N=transmon_levels)
-        if A is None:
-            A = qutip.tensor(a, qutip.operators.identity(transmon_levels))
-        if B is None:
-            B = qutip.tensor(qutip.operators.identity(transmon_levels), a)
-
-        H_c = (
-            np.exp(1j * self.phi_c) * A * B.dag()
-            + np.exp(-1j * self.phi_c) * A.dag() * B
-        )
-        H_g = (
-            np.exp(1j * self.phi_g) * A * B
-            + np.exp(-1j * self.phi_g) * A.dag() * B.dag()
-        )
-        return Hamiltonian(self.gc * H_c + self.gg * H_g)
-
-    def create_slider_interaction(self):
-        """Create interactive sliders for the interaction parameters.
-
-        Returns:
-            An interactive widget with sliders.
-        """
-        gc_slider = widgets.FloatSlider(
-            value=self.gc, min=0, max=2 * np.pi, step=np.pi / 16, description="gc:"
-        )
-        gg_slider = widgets.FloatSlider(
-            value=self.gg, min=0, max=2 * np.pi, step=np.pi / 16, description="gg:"
-        )
-        return widgets.interactive(self.set_parameters, gc=gc_slider, gg=gg_slider)
-
-
-class QubitSystem(Interaction):
-    def __init__(self, qubit_interactions, num_qubits):
-        # Same initialization code as before
-        self.num_qubits = num_qubits
-        self.qubit_interactions = qubit_interactions
-
-        self._params = []
-        self.parameter_mapping = []  # List to keep track of the mapping
-        for qi, _ in qubit_interactions:
-            # Check and add gc parameter
-            if isinstance(qi.gc, Parameter):
-                self.parameter_mapping.append((qi, "gc"))
-                self._params.append(qi.gc)
-            # Check and add gg parameter
-            if isinstance(qi.gg, Parameter):
-                self.parameter_mapping.append((qi, "gg"))
-                self._params.append(qi.gg)
-            # Check and add phi_c parameter
-            if isinstance(qi.phi_c, Parameter):
-                self.parameter_mapping.append((qi, "phi_c"))
-                self._params.append(qi.phi_c)
-            # Check and add phi_g parameter
-            if isinstance(qi.phi_g, Parameter):
-                self.parameter_mapping.append((qi, "phi_g"))
-                self._params.append(qi.phi_g)
-
-    def update_parameters(self, param_values):
-        # Iterate through the parameter values and mapping
-        for value, (qi, attr_name) in zip(param_values, self.parameter_mapping):
-            # Update the corresponding attribute in the Qubit interaction
-            setattr(qi, attr_name, value)
+    def construct_single_operator(self, qubit_op, num_qubits):
+        op = qubit_op.to_qutip()
+        operators = [qutip.qeye(self.transmon_levels) for _ in range(num_qubits)]
+        qubit_index = self.qubit_to_index[qubit_op.qubit_label]
+        operators[qubit_index] = op
+        return qutip.tensor(operators)
 
     def construct_H(self) -> Hamiltonian:
-        """Construct the system Hamiltonian matrix.
-
-        Returns:
-            Hamiltonian matrix for the system.
-        """
         H = 0
-        for qubit_interaction, qubit_pair in self.qubit_interactions:
-            H += self.construct_interaction(qubit_interaction, qubit_pair).H
+        for term, coeff in zip(self.terms, self.coefficients):
+            term_operators = [self.construct_single_operator(op, 2) for op in term]
+            term_product = prod(term_operators)
+            H += coeff * term_product
+            H += np.conj(coeff) * term_product.dag()
         return Hamiltonian(H)
 
-    def construct_interaction(self, qubit_interaction, qubit_pair):
-        a = qutip.operators.create(N=2)
+    # def __str__(self):
+    #     """String representation of the Hamiltonian in LaTeX form.
 
-        operators = [qutip.operators.identity(2) for _ in range(self.num_qubits)]
-        operators[qubit_pair[0]] = a
-        A = qutip.tensor(*operators)
+    #     Returns:
+    #         str: LaTeX string.
+    #     """
+    #     coeff_to_terms = defaultdict(list)
+    #     for term, coeff in zip(self.terms, self.coefficients):
+    #         operators = ' '.join([op.replace("_dag", r"^\dagger") for op in term])
+    #         coeff_str = f"{coeff.real:.2f}"
+    #         if np.iscomplex(coeff):
+    #             coeff_str += f" + {coeff.imag:.2f}i"
+    #         coeff_to_terms[coeff_str].append(operators)
 
-        operators = [qutip.operators.identity(2) for _ in range(self.num_qubits)]
-        operators[qubit_pair[1]] = a
-        B = qutip.tensor(*operators)
+    #     latex_str = r"\hat{H} = "
+    #     for coeff, terms in coeff_to_terms.items():
+    #         latex_str += f"({coeff}) ("
+    #         for term in terms:
+    #             latex_str += f"{term} + "
+    #         latex_str = latex_str.rstrip(" + ")
+    #         latex_str += ") + "
 
-        H_int = qubit_interaction.construct_H(A, B)
-        return H_int
-
-    # def display(self):
-    #     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-
-    #     # Displaying sliders (QubitInteraction)
-    #     for interaction, _ in self.qubit_interactions:
-    #         display(interaction.create_slider_interaction())
-
-    #     # Qubit interactions graph
-    #     G = rx.PyGraph()
-    #     G.add_nodes_from(list(range(self.num_qubits)))
-    #     for idx, (interaction, (q1, q2)) in enumerate(self.qubit_interactions):
-    #         G.add_edge(q1, q2, interaction.gc)  # or other value for annotation
-    #         axes[1].text(
-    #             (q1 + q2) / 2, idx, f"{interaction.gc:.2f},{interaction.gg:.2f}"
-    #         )
-
-    #     mpl_draw(G, ax=axes[1], with_labels=True)
-
-    #     # # Final computed unitary
-    #     # U = self._construct_U_lambda()(t=1.0)  # Assuming U is computed this way
-    #     # im = axes[2].imshow(np.abs(U), cmap="viridis")
-    #     # fig.colorbar(im, ax=axes[2])
-
-    #     plt.show()
+    #     latex_str = latex_str.rstrip(" + ") + r" + \text{h.c.}"
+    #     return latex_str
 
 
-class ParameterizedUnitaryGate(Gate):
-    def __init__(self, qubit_system: QubitSystem):
-        self.qubit_system = qubit_system
-        super().__init__("CG", qubit_system.num_qubits, qubit_system._params)
+# Example child classes
+class ConversionGainThreeWave(ConversionGainInteraction):
+    def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=2):
+        terms = [
+            [
+                QubitOperator("a", Transition.GE),
+                QubitOperator("b", Transition.GE).dag(),
+            ],
+            [QubitOperator("a", Transition.GE), QubitOperator("b", Transition.GE)],
+        ]
+        coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
+        super().__init__(terms, coefficients, transmon_levels)
 
-    def __array__(self, dtype=None):
-        # kind of hacky because we don't propagate changes to params until we ask for the array
-        # use self.params to update the qubit system
-        self.qubit_system.update_parameters(self.params)
-        return self.qubit_system.construct_U(t=1.0).full()
 
-    def _define(self):
-        self.qubit_system.update_parameters(self.params)
-        qc = QuantumCircuit(self.num_qubits)
-        U = self.qubit_system.construct_U(t=1.0).full()
-        qc.unitary(U, range(self.num_qubits))
-        self.definition = qc
+class ConversionGainFiveWave(ConversionGainInteraction):
+    def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=3):
+        terms = [
+            [
+                QubitOperator("a", Transition.GF),
+                QubitOperator("b", Transition.FG).dag(),
+            ],
+            [QubitOperator("a", Transition.GF), QubitOperator("b", Transition.FG)],
+        ]
+        coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
+        super().__init__(terms, coefficients, transmon_levels)
+
+
+class ComposedInteraction:
+    def __init__(self, interactions: List[ConversionGainInteraction], num_qubits: int):
+        self.num_qubits = num_qubits
+        self.interactions = interactions
+
+    def construct_H(self) -> Hamiltonian:
+        H = 0
+        for interaction in self.interactions:
+            H += interaction.construct_H(self.num_qubits).H
+        return Hamiltonian(H)
+
+
+# class ComposedInteraction:
+#     def __init__(self, interactions: List[ConversionGainInteraction], num_qubits: int):
+#         """
+#         Initialize the parameters for composed interactions.
+
+#         Args:
+#             interactions (List[ConversionGainInteraction]): List of 2-qubit interactions.
+#             num_qubits (int): Total number of qubits in the system.
+#         """
+#         self.num_qubits = num_qubits
+#         self.interactions = interactions
+#         self.qubit_to_index = self.build_qubit_index_map()
+
+#     def build_qubit_index_map(self) -> dict:
+#         """Build a mapping from qubit identifier to index in the full system."""
+#         qubit_ids = set()
+#         for interaction in self.interactions:
+#             qubit_ids.update(interaction.qubit_to_index.keys())
+#         return {qid: idx for idx, qid in enumerate(sorted(qubit_ids))}
+
+#     def construct_H(self) -> Hamiltonian:
+#         """
+#         Construct the system Hamiltonian.
+
+#         Returns:
+#             Hamiltonian: The Hamiltonian for the full system.
+#         """
+#         H = 0
+#         for interaction in self.interactions:
+#             H += self.map_interaction_to_system(interaction)
+#         return Hamiltonian(H)
+
+#     def map_interaction_to_system(self, interaction: ConversionGainInteraction) -> qutip.Qobj:
+#         """
+#         Map a 2-qubit interaction Hamiltonian to the full system.
+
+#         Args:
+#             interaction (ConversionGainInteraction): The 2-qubit interaction.
+
+#         Returns:
+#             qutip.Qobj: The Hamiltonian mapped to the full system.
+#         """
+#         H_interaction = interaction.construct_H().H  # Extract the qutip.Qobj Hamiltonian
+#         # Initialize full system operators as identity matrices
+#         full_system_ops = [qutip.qeye(self.num_qubits) for _ in range(self.num_qubits)]
+
+#         for qubit_id, qubit_idx in interaction.qubit_to_index.items():
+#             full_system_idx = self.qubit_to_index[qubit_id]
+#             full_system_ops[full_system_idx] = H_interaction
+
+#         return qutip.tensor(full_system_ops)
