@@ -21,6 +21,7 @@ from quantum_logical.unitary_util import ImplicitUnitaryGate
 
 zero = basis(2, 0)  # |0>
 one = basis(2, 1)  # |1>
+e = basis(3, 1)  # |e>
 p_ge = (basis(2, 0) + basis(2, 1)).unit()  # |+_{ge}>
 m_ge = (basis(2, 0) - basis(2, 1)).unit()  # |-_{ge}>
 p_gf = (basis(3, 0) + basis(3, 2)).unit()  # |+_{gf}>
@@ -51,12 +52,12 @@ class LogicalBasis(ABC):
         """Operator that changes from the computational basis to the logical
         basis.
 
-        |0>_L<0| + |1>_L<1|
+        A = |0>_L<0| + |1>_L<1|
 
         Returns:
             Qobj: Transformation operator from computational to logical basis.
         """
-        return self.zero_ket * zero.dag() + self.one_ket * one.dag()
+        return self.zero_ket * basis(2, 0).dag() + self.one_ket * basis(2, 1).dag()
 
 
 class Ancilla:
@@ -82,14 +83,24 @@ class Ancilla:
         self.correction_operator = correction_operator
 
     @property
-    def detection_operator(self) -> Qobj:
-        # |1> \otimes |error_state>  <0| \otimes <error_state|
-        return ImplicitUnitaryGate(
-            sum(
-                [
-                    tensor(one, error_state) * tensor(zero, error_state).dag()
-                    for error_state in self.error_states
-                ]
+    def _detection_operator(self) -> Qobj:
+        """Operator that detects errors in the logical basis.
+
+        \sum_i |1_ancilla_i> \otimes |\tilde{psi}_i> <0_ancilla_i| \otimes <\tilde{psi}_i|
+
+        where \tilde{psi}_i is the error state(s).
+
+        Returns:
+            Qobj: Operator that detects errors in the logical basis.
+        """
+        return Qobj(
+            ImplicitUnitaryGate.create_unitary_from_implicit_operator(
+                sum(
+                    [
+                        tensor(one, error_state) * tensor(zero, error_state).dag()
+                        for error_state in self.error_states
+                    ]
+                )
             )
         )
 
@@ -103,19 +114,19 @@ class Ancilla:
 # https://qiskit.org/ecosystem/aer/apidocs/aer_noise.html#quantum-error-functions
 
 
-# TODO: how should we implement this?
 class LogicalEncoding:
     def __init__(self, logical_basis: LogicalBasis, *ancilla, error_channels=None):
         self.logical_basis = logical_basis
         self.ancilla = ancilla
 
-    def detection_subroutine(self):
-        """Generate a quantum circuit subroutine for error detection.
+    @property
+    def detection_operator(self) -> Qobj:
+        """Composite operator that detects errors in the logical basis.
 
         Returns:
-            QuantumCircuit: Subroutine for detecting errors using the ancilla qubits.
+            Qobj: Operator that detects errors in the logical basis.
         """
-        raise NotImplementedError
+        return tensor(*[a._detection_operator for a in self.ancilla])
 
 
 class PhaseReptition(LogicalEncoding):
@@ -219,15 +230,29 @@ class SNAILConcatWithAncilla(LogicalEncoding):
         logical1 = tensor(m_gf, m_gf, m_gf)
         logical_basis = LogicalBasis(logical0, logical1)
 
-        # # Define ancillas for error detection and correction
-        # ancilla1 = Ancilla(
-        #     detection_operator=..., correction_operator=...
-        # )  # Define appropriately
-        # ancilla2 = Ancilla(
-        #     detection_operator=..., correction_operator=...
-        # )  # Define appropriately
-        # ancilla3 = Ancilla(
-        #     detection_operator=..., correction_operator=...
-        # )  # Define appropriately
+        # Define ancillas for error detection and correction
+        Ancilla(
+            tensor(e, p_gf, p_gf),
+            tensor(p_gf, e, p_gf),
+            tensor(p_gf, p_gf, e),
+            tensor(e, m_gf, m_gf),
+            tensor(m_gf, e, m_gf),
+            tensor(m_gf, m_gf, e),
+        )
+        phase_ancilla_1 = Ancilla(
+            tensor(p_gf, m_gf, p_gf),
+            tensor(p_gf, m_gf, m_gf),
+            tensor(m_gf, p_gf, p_gf),
+            tensor(m_gf, p_gf, m_gf),
+        )
 
-        super().__init__(logical_basis)  # , ancilla1, ancilla2, ancilla3)
+        phase_ancilla_2 = Ancilla(
+            tensor(p_gf, p_gf, m_gf),
+            tensor(p_gf, m_gf, p_gf),
+            tensor(m_gf, p_gf, m_gf),
+            tensor(m_gf, m_gf, p_gf),
+        )
+
+        super().__init__(
+            logical_basis, phase_ancilla_1, phase_ancilla_2
+        )  # , erasure_ancilla)
