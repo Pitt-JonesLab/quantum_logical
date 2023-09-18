@@ -1,5 +1,5 @@
 from abc import ABC
-from math import prod
+from functools import reduce
 from typing import List
 
 import numpy as np
@@ -36,6 +36,8 @@ class ConversionGainInteraction(ABC):
         self.terms = terms
         self.coefficients = coefficients
         self.transmon_levels = transmon_levels
+
+        # TODO make alphabetical
         self.qubit_to_index = {
             op[0]: idx
             for idx, op in enumerate(
@@ -65,7 +67,13 @@ class ConversionGainInteraction(ABC):
         H = 0
         for term, coeff in zip(self.terms, self.coefficients):
             term_operators = [self.construct_single_operator(op, 2) for op in term]
-            term_product = prod(term_operators)
+            # FIXME, order matters here
+            term_product = reduce(
+                lambda x, y: x @ y.full(),
+                term_operators,
+                np.eye(self.transmon_levels**2),
+            )
+            term_product = qutip.Qobj(term_product)
             H += coeff * term_product
             H += np.conj(coeff) * term_product.dag()
         return Hamiltonian(H)
@@ -101,10 +109,15 @@ class ConversionGainThreeWave(ConversionGainInteraction):
     def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=2):
         terms = [
             [
-                QubitOperator("a", Transition.GE),
-                QubitOperator("b", Transition.GE).dag(),
+                QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
+                QubitOperator(
+                    "b", Transition.GE, transmon_levels=transmon_levels
+                ).dag(),
             ],
-            [QubitOperator("a", Transition.GE), QubitOperator("b", Transition.GE)],
+            [
+                QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.GE, transmon_levels=transmon_levels),
+            ],
         ]
         coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
         super().__init__(terms, coefficients, transmon_levels)
@@ -114,13 +127,22 @@ class ConversionGainFiveWave(ConversionGainInteraction):
     def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=3):
         terms = [
             [
-                QubitOperator("a", Transition.GF),
-                QubitOperator("b", Transition.FG).dag(),
+                QubitOperator("a", Transition.GF, transmon_levels=transmon_levels),
+                QubitOperator(
+                    "b", Transition.GF, transmon_levels=transmon_levels
+                ).dag(),
             ],
-            [QubitOperator("a", Transition.GF), QubitOperator("b", Transition.FG)],
+            [
+                QubitOperator("a", Transition.GF, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.GF, transmon_levels=transmon_levels),
+            ],
         ]
         coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
         super().__init__(terms, coefficients, transmon_levels)
+
+
+# TODO
+# composed interactions for VGate, DeltaGate
 
 
 class ComposedInteraction:
