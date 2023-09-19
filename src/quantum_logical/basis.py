@@ -44,20 +44,24 @@ class LogicalBasis(ABC):
         if not np.isclose(zero_ket.overlap(one_ket), 0):
             raise ValueError("Logical basis states must be orthogonal.")
 
-        self.zero_ket = zero_ket
-        self.one_ket = one_ket
+        self.zero_ket = zero_ket / np.linalg.norm(zero_ket)
+        self.one_ket = one_ket / np.linalg.norm(one_ket)
 
     @property
     def transform_operator(self) -> Qobj:
         """Operator that changes from the computational basis to the logical
         basis.
 
-        A = |0>_L<0| + |1>_L<1|
+        A = |L_0><0| + |L_1><1|
 
         Returns:
             Qobj: Transformation operator from computational to logical basis.
         """
         return self.zero_ket * basis(2, 0).dag() + self.one_ket * basis(2, 1).dag()
+
+    @property
+    def projector(self) -> Qobj:
+        return self.zero_ket * self.zero_ket.dag() + self.one_ket * self.one_ket.dag()
 
 
 class Ancilla:
@@ -132,7 +136,7 @@ class LogicalEncoding:
 class PhaseReptition(LogicalEncoding):
     """3-bit phase repetition encoding.
 
-    |0>_L = |+++> |1>_L = |--->
+    |L_0> = |+++> |L_1> = |--->
     """
 
     def __init__(self):
@@ -155,8 +159,8 @@ class DualRail(LogicalEncoding):
     """Dual-rail encoding.
 
     The logical basis is defined as:
-        |0>_L = |01>
-        |1>_L = |10>
+        |L_0> = |01>
+        |L_1> = |10>
 
     Ancilla:
         - |e><00| for detecting photon loss
@@ -181,8 +185,8 @@ class VSLQ(LogicalEncoding):
     """Very small logical qubit encoding.
 
     The logical basis is defined as:
-        |0>_L = |g+f, g+f>
-        |1>_L = |g-f, g-f>
+        |L_0> = |g+f, g+f>
+        |L_1> = |g-f, g-f>
 
     Protects against a single photon loss.
     Reference: https://arxiv.org/pdf/1510.06117.pdf
@@ -199,8 +203,8 @@ class StarCode(LogicalEncoding):
     """Autonomous quantum error correction with a star code.
 
     The logical basis is defined as:
-        |0>_L = |gf> - |fg> = |g-f, f-g>
-        |1>_L = |gg> - |ff> = |g-f, g-f>
+        |L_0> = |gf> - |fg> = |g-f, f-g>
+        |L_1> = |gg> - |ff> = |g-f, g-f>
 
     Reference: https://arxiv.org/pdf/2302.06707.pdf
 
@@ -219,8 +223,8 @@ class SNAILConcatWithAncilla(LogicalEncoding):
     """SNAIL concatenated erasure encoding with error ancillas.
 
     The logical basis is defined as:
-        |0>_L = |g+f, g+f, g+f>
-        |1>_L = |g-f, g-f, g-f>
+        |L_0> = |g+f, g+f, g+f>
+        |L_1> = |g-f, g-f, g-f>
 
     Includes ancillas for detecting specific errors.
     """

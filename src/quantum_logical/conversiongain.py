@@ -86,7 +86,9 @@ class ConversionGainInteraction(ABC):
     #     """
     #     coeff_to_terms = defaultdict(list)
     #     for term, coeff in zip(self.terms, self.coefficients):
-    #         operators = ' '.join([op.replace("_dag", r"^\dagger") for op in term])
+    #         operators = " ".join(
+    #             [op.qubit_label.replace("_dag", r"^\dagger") for op in term]
+    #         )
     #         coeff_str = f"{coeff.real:.2f}"
     #         if np.iscomplex(coeff):
     #             coeff_str += f" + {coeff.imag:.2f}i"
@@ -115,22 +117,6 @@ class ConversionGainThreeWave(ConversionGainInteraction):
             [
                 QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
                 QubitOperator("b", Transition.EG, transmon_levels=transmon_levels),
-            ],
-        ]
-        coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
-        super().__init__(terms, coefficients, transmon_levels)
-
-
-class ConversionGainThreeWaveTwo(ConversionGainInteraction):
-    def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=2):
-        terms = [
-            [
-                QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
-                QubitOperator("b", Transition.EF, transmon_levels=transmon_levels),
-            ],
-            [
-                QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
-                QubitOperator("b", Transition.FE, transmon_levels=transmon_levels),
             ],
         ]
         coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
