@@ -132,11 +132,32 @@ class ConversionGainThreeWaveTogether(ConversionGainInteraction):
             ],
             [
                 QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
-                QubitOperator("b", Transition.GE, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.EF, transmon_levels=transmon_levels),
             ],
             [
                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
                 QubitOperator("b", Transition.EG, transmon_levels=transmon_levels),
+            ],
+            [
+                QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.GE, transmon_levels=transmon_levels),
+            ],
+        ]
+        coefficients = [
+            gc * np.exp(1j * phi_c1),
+            gg * np.exp(1j * phi_g),
+            gc * np.exp(1j * phi_c2),
+            gg * np.exp(1j * phi_g),
+        ]
+        super().__init__(terms, coefficients, transmon_levels)
+
+
+class CNOT_FC_EF(ConversionGainInteraction):
+    def __init__(self, gc, gg, phi_c1=0.0, phi_c2=0.0, phi_g=0.0, transmon_levels=3):
+        terms = [
+            [
+                QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.FE, transmon_levels=transmon_levels),
             ],
             [
                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
@@ -146,7 +167,25 @@ class ConversionGainThreeWaveTogether(ConversionGainInteraction):
         coefficients = [
             gc * np.exp(1j * phi_c1),
             gg * np.exp(1j * phi_g),
-            gc * np.exp(1j * phi_c2),
+        ]
+        super().__init__(terms, coefficients, transmon_levels)
+
+
+# ?
+class CNOT_FC_GE(ConversionGainInteraction):
+    def __init__(self, gc, gg, phi_c1=0.0, phi_c2=0.0, phi_g=0.0, transmon_levels=3):
+        terms = [
+            [
+                QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.EF, transmon_levels=transmon_levels),
+            ],
+            [
+                QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.EG, transmon_levels=transmon_levels),
+            ],
+        ]
+        coefficients = [
+            gc * np.exp(1j * phi_c1),
             gg * np.exp(1j * phi_g),
         ]
         super().__init__(terms, coefficients, transmon_levels)
