@@ -131,8 +131,8 @@ class ConversionGainThreeWaveTogether(ConversionGainInteraction):
                 QubitOperator("b", Transition.FE, transmon_levels=transmon_levels),
             ],
             [
-                QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
-                QubitOperator("b", Transition.GE, transmon_levels=transmon_levels),
+                QubitOperator("a", Transition.EG, transmon_levels=transmon_levels),
+                QubitOperator("b", Transition.EF, transmon_levels=transmon_levels),
             ],
             [
                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
