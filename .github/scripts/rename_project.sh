@@ -17,13 +17,13 @@ echo "GitHub Username: $github_username";
 
 echo "Renaming project..."
 
-original_author="author_name"
-original_project_name="project_name"
-original_project_description="project_description"
-original_github_username="github_username"
+original_author="{{author_name}}"
+original_project_name="{{project_name}}"
+original_project_description="{{project_description}}"
+original_github_username="{{github_username}}"
 
-# avoid renaming things in .github folder
-for filename in $(git ls-files | grep -vP '(^|/)\.')
+# avoid renaming in .github/scripts/rename_project.sh
+for filename in $(git ls-files | grep -vP '^\.github/scripts/rename_project\.sh$')
 do
     sed -i "s/$original_author/$author_name/g" $filename
     sed -i "s/$original_project_name/$project_name/g" $filename
@@ -33,12 +33,10 @@ do
 done
 
 mv src/project_name src/$project_name
-echo "# $project_name
 
-![Tests](https://github.com/$github_username/$project_name/actions/workflows/tests.yml/badge.svg?branch=main)
-![Format Check](https://github.com/$github_username/$project_name/actions/workflows/format-check.yml/badge.svg?branch=main)
-
-$project_description" > README.md
+# Copy the content of template-README.md to README.md
+cp template-README.md README.md
+rm template-README.md
 
 # This command runs only once on GHA!
 rm -rf .github/template_flag.yml

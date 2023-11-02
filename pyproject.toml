@@ -2,12 +2,39 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "quantum_logical"
+description = "logical state encodings for error-detection/correction of quantum states"
+version = "0.1.0"
+authors = [{ name = "Evan McKinney" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "qiskit",
+    "qutip",
+    "weylchamber",
+    "matplotlib",
+    "LovelyPlots",
+    "rustworkx",
+
+]
+
+[project.optional-dependencies]
+dev = ["ipykernel", "pre-commit", "pylatexenc", "ipywidgets"]
+format = [
+    "pre-commit",
+    "black[jupyter]",
+    "isort",
+    "tomli",
+    "pydocstyle",
+    "ruff",
+    "docformatter[tomli]",
+]
+test = ["pytest"]
+
 [tool.ruff]
 target-version = "py39"
 fix = true
 
 [tool.isort]
 profile = "black"
-
-[tool.black]
-line-length = 88

@@ -1,14 +1,25 @@
 exclude: ".*deprecated/"
 
 repos:
+
+  - repo: https://github.com/evmckinney9/jupyter-notebook-naming-hook
+    rev: v0.1.2
+    hooks:
+      - id: enforce-notebook-naming
+
+  - repo: https://github.com/qoomon/git-conventional-commits
+    rev: v2.6.5
+    hooks:
+      - id: conventional-commits
+
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.0.285"
+    rev: "v0.1.3"
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
@@ -32,7 +43,7 @@ repos:
         name: isort (python)
 
   - repo: https://github.com/psf/black
-    rev: 23.7.0
+    rev: 23.10.1
     hooks:
       - id: black-jupyter
         language_version: python3.9
