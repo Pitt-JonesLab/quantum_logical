@@ -110,110 +110,32 @@ class ConversionGainFiveWave(Hamiltonian, PairwiseInteractionMixin):
         super().__init__(coefficients, operators)
 
 
+class CNOT_FC_EF(Hamiltonian, PairwiseInteractionMixin):
+    """CNOT controlled by |f>, target gate is between |e> and |f>."""
+
+    def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=3):
+        """Initialize the interaction with given parameters."""
+        # Define annihilation and creation operators for specified transitions
+        a_ef = selective_destroy(transmon_levels, 2, 1)
+
+        # Define the interaction terms and coefficients
+        coefficients = [
+            gc * np.exp(1j * phi_c),
+            gg * np.exp(1j * phi_g),
+        ]
+        operators = [
+            tensor(a_ef, a_ef.dag()),  # a_ef * a_ef term
+            tensor(a_ef, a_ef),  # a_ef * a_ef term
+        ]
+
+        # Validate pairwise interactions
+        self.verify_pairwise_interaction(operators)
+
+        # Initialize the Hamiltonian
+        super().__init__(coefficients, operators)
+
+
 if __name__ == "__main_":
     # Example usage:
     H = ConversionGainInteraction(np.pi / 4, np.pi / 4)
     print(H.construct_U(1.0))
-
-# # Example child classes
-# class ConversionGainThreeWave(ConversionGainInteraction):
-#     def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=2):
-#         terms = [
-#             [
-#                 QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.GE, transmon_levels=transmon_levels),
-#             ],
-#             [
-#                 QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.EG, transmon_levels=transmon_levels),
-#             ],
-#         ]
-#         coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
-#         super().__init__(terms, coefficients, transmon_levels)
-
-
-# class ConversionGainThreeWaveTogether(ConversionGainInteraction):
-#     def __init__(self, gc, gg, phi_c1=0.0, phi_c2=0.0, phi_g=0.0, transmon_levels=3):
-#         terms = [
-#             [
-#                 QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.FE, transmon_levels=transmon_levels),
-#             ],
-#             [
-#                 # QubitOperator("a", Transition.EG, transmon_levels=transmon_levels),
-#                 QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.EF, transmon_levels=transmon_levels),
-#             ],
-#             [
-#                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.EG, transmon_levels=transmon_levels),
-#             ],
-#             [
-#                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.GE, transmon_levels=transmon_levels),
-#             ],
-#         ]
-#         coefficients = [
-#             gc * np.exp(1j * phi_c1),
-#             gg * np.exp(1j * phi_g),
-#             gc * np.exp(1j * phi_c2),
-#             gg * np.exp(1j * phi_g),
-#         ]
-#         super().__init__(terms, coefficients, transmon_levels)
-
-
-# class CNOT_FC_EF(ConversionGainInteraction):
-#     def __init__(self, gc, gg, phi_c1=0.0, phi_c2=0.0, phi_g=0.0, transmon_levels=3):
-#         terms = [
-#             [
-#                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.FE, transmon_levels=transmon_levels),
-#             ],
-#             [
-#                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.EF, transmon_levels=transmon_levels),
-#             ],
-#         ]
-#         coefficients = [
-#             gc * np.exp(1j * phi_c1),
-#             gg * np.exp(1j * phi_g),
-#         ]
-#         super().__init__(terms, coefficients, transmon_levels)
-
-
-# # ?
-# class CNOT_FC_GE(ConversionGainInteraction):
-#     def __init__(self, gc, gg, phi_c1=0.0, phi_c2=0.0, phi_g=0.0, transmon_levels=3):
-#         terms = [
-#             [
-#                 QubitOperator("a", Transition.EF, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.EF, transmon_levels=transmon_levels),
-#             ],
-#             [
-#                 QubitOperator("a", Transition.GE, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.EG, transmon_levels=transmon_levels),
-#             ],
-#         ]
-#         coefficients = [
-#             gc * np.exp(1j * phi_c1),
-#             gg * np.exp(1j * phi_g),
-#         ]
-#         super().__init__(terms, coefficients, transmon_levels)
-
-
-# class ConversionGainFiveWave(ConversionGainInteraction):
-#     def __init__(self, gc, gg, phi_c=0.0, phi_g=0.0, transmon_levels=3):
-#         terms = [
-#             [
-#                 QubitOperator("a", Transition.GF, transmon_levels=transmon_levels),
-#                 QubitOperator(
-#                     "b", Transition.GF, transmon_levels=transmon_levels
-#                 ).dag(),
-#             ],
-#             [
-#                 QubitOperator("a", Transition.GF, transmon_levels=transmon_levels),
-#                 QubitOperator("b", Transition.FG, transmon_levels=transmon_levels),
-#             ],
-#         ]
-#         coefficients = [gc * np.exp(1j * phi_c), gg * np.exp(1j * phi_g)]
-#         super().__init__(terms, coefficients, transmon_levels)
