@@ -1,7 +1,66 @@
 """Selectively destroy a particle in a quantum system."""
 
+from itertools import product
+
 import numpy as np
 import qutip
+from qutip import Qobj, basis, tensor
+
+
+def reduce_to_two_qubit_subspace(unitary, indices):
+    """Reduces a two-qudit U to a two-qubit U using isometric projection.
+
+    Parameters:
+        unitary (Qobj): A unitary operator in a two-qudit Hilbert space.
+        indices (list): List of integer indices [index1, index2] that specify which
+                        qudit levels to map to the |0> and |1> qubit states.
+
+    Returns:
+        Qobj: The unitary operator reduced to the two-qubit subspace.
+    """
+    if not isinstance(unitary, Qobj):
+        raise ValueError("The unitary parameter must be a QuTiP Qobj.")
+
+    if len(indices) != 2:
+        raise ValueError(
+            "Indices must be of length 2, specifying the levels to keep for each qudit."
+        )
+
+    # Infer the level dimension from the shape of the unitary
+    level_dim = int(np.sqrt(unitary.shape[0]))
+    if level_dim**2 != unitary.shape[0]:
+        raise ValueError(
+            "The unitary must be a square matrix corresponding to a two-qudit system."
+        )
+
+    # Validate indices
+    if any(idx >= level_dim for idx in indices):
+        raise ValueError("Index out of range for the given level dimension.")
+
+    # Create the isometry
+    isometry = Qobj(
+        np.zeros((4, level_dim**2)), dims=[[2, 2], [level_dim, level_dim]]
+    )
+
+    # Construct the isometry using tensor products of the basis states
+    for qubit_index, (qudit_index1, qudit_index2) in enumerate(
+        product(indices, repeat=2)
+    ):
+        qudit_state = tensor(
+            basis(level_dim, qudit_index1), basis(level_dim, qudit_index2)
+        )
+        isometry += (
+            tensor(basis(2, qubit_index // 2), basis(2, qubit_index % 2))
+            * qudit_state.dag()
+        )
+
+    # Apply the isometric projection to the unitary
+    reduced_unitary = isometry * unitary * isometry.dag()
+
+    # Ensure that the returned Qobj has the correct dimensions for a two-qubit system
+    reduced_unitary.dims = [[2, 2], [2, 2]]
+
+    return reduced_unitary
 
 
 def selective_destroy(levels: int, from_level: int, to_level: int) -> qutip.Qobj:

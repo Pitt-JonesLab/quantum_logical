@@ -84,6 +84,15 @@ class ConversionGainInteraction(Hamiltonian, PairwiseInteractionMixin):
         # Initialize the Hamiltonian
         super().__init__(coefficients, operators)
 
+    @classmethod
+    def from_coeff_ops_list(self, coefficients, operators):
+        """Initialize the interaction with given parameters."""
+        # Validate pairwise interactions
+        self.verify_pairwise_interaction(operators)
+
+        # Initialize the Hamiltonian
+        super().__init__(coefficients, operators)
+
 
 class ConversionGainFiveWave(Hamiltonian, PairwiseInteractionMixin):
     """Conversion and gain interaction Hamiltonian."""
