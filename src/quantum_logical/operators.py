@@ -5,6 +5,15 @@ from itertools import product
 import numpy as np
 import qutip
 from qutip import Qobj, basis, tensor
+from weylchamber import c1c2c3
+
+
+def _qutrit_to_3coords(qutrit_unitary):
+    u_ge = reduce_to_two_qubit_subspace(qutrit_unitary, [0, 1])
+    u_ef = reduce_to_two_qubit_subspace(qutrit_unitary, [1, 2])
+    u_gf = reduce_to_two_qubit_subspace(qutrit_unitary, [0, 2])
+
+    return c1c2c3(u_ge), c1c2c3(u_ef), c1c2c3(u_gf)
 
 
 def reduce_to_two_qubit_subspace(unitary, indices):
