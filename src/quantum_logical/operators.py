@@ -9,6 +9,18 @@ from weylchamber import c1c2c3
 
 
 def _qutrit_to_3coords(qutrit_unitary):
+    """Convert a unitary operator in a three-level system to three coordinates.
+
+    NOTE: it is unclear to me if this is in general physically meaningful.
+    However, can be used to verify if two are identities, then the gate can be
+    considered as a qubit gate between the non-identity levels.
+
+    Parameters:
+        qutrit_unitary (Qobj): A unitary operator in a three-level system.
+
+    Returns:
+        tuple: The three coordinates corresponding to the unitary.
+    """
     u_ge = reduce_to_two_qubit_subspace(qutrit_unitary, [0, 1])
     u_ef = reduce_to_two_qubit_subspace(qutrit_unitary, [1, 2])
     u_gf = reduce_to_two_qubit_subspace(qutrit_unitary, [0, 2])

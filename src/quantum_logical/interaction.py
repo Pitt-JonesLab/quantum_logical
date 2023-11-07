@@ -103,6 +103,9 @@ class ConversionGainInteraction(Hamiltonian, PairwiseInteractionMixin):
         return Hamiltonian(coefficients, operators)
 
 
+# TODO add all 3wave interactions as a class
+
+
 class ConversionGainFiveWave(Hamiltonian, PairwiseInteractionMixin):
     """Conversion and gain interaction Hamiltonian."""
 
