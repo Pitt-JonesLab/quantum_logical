@@ -6,7 +6,7 @@
 from abc import ABC
 
 import numpy as np
-from qutip import Qobj
+from qutip import Qobj, basis
 
 
 class ErrorChannel(ABC):
@@ -60,8 +60,8 @@ class ErrorChannel(ABC):
         return state
 
 
-# TODO combine these into a single amplitude and phase damping class
-# then extend to multiple-qubits using tensor products
+# TODO combine these into a single amplitude and phase damping class,
+# where dimensionality is passed in as an argument
 
 
 class AmplitudeDamping(ErrorChannel):
@@ -83,14 +83,33 @@ class PhaseDamping(ErrorChannel):
 
 
 class QutritAmplitudeDamping(ErrorChannel):
-    def __init__(self, coefficients, trotter_dt):
-        super().__init__(trotter_dt)
+    # FIXME, what is tau?
+    def __init__(self, tau, k1, k2, trotter_dt):
+        zero_ket = basis(3, 0)
+        one_ket = basis(3, 1)
+        two_ket = basis(3, 2)
+
+        gamma_01 = 2 * k2 * tau
+        gamma_02 = 2 * k1 * k2 * (tau) ** 2
+        gamma_12 = 2 * k1 * tau
+
         # Define the Kraus operators for qutrit amplitude damping
-        # ...
+        A_01 = np.sqrt(gamma_01) * zero_ket * one_ket.dag()
+        A_12 = np.sqrt(gamma_12) * one_ket * two_ket.dag()
+        A_02 = np.sqrt(gamma_02) * zero_ket * two_ket.dag()
+        A_0 = (
+            zero_ket * zero_ket.dag()
+            + np.sqrt(1 - gamma_01) * one_ket * one_ket.dag()
+            + np.sqrt(1 - gamma_02 - gamma_12) * two_ket * two_ket.dag()
+        )
+
+        self.E = [A_0, A_01, A_12, A_02]
+        super().__init__(trotter_dt, dims=3)
 
 
+# TODO?
 class QutritPhaseDamping(ErrorChannel):
     def __init__(self, lambdas, trotter_dt):
         super().__init__(trotter_dt)
         # Define the Kraus operators for qutrit phase damping
-        # ...
+        raise NotImplementedError
