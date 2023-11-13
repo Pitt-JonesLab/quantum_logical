@@ -8,8 +8,11 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from qutip import Qobj
-
-from quantum_logical._lib import apply_error_channel_rust
+from quantum_logical._lib import (
+    apply_error_channel_rust,
+    apply_error_channel_with_unitary,
+)
+from scipy.linalg import fractional_matrix_power
 
 # import warnings
 
@@ -38,13 +41,28 @@ class ErrorChannel(ABC):
             completeness, np.eye(self.dims), atol=1e-6
         ), "Kraus operators do not satisfy the completeness relation"
 
-    def _apply(self, state_numpy, num_steps):
+    @classmethod
+    def from_combined_channels(cls, channels, trotter_dt, dims):
+        """Create a new ErrorChannel from a combination of other channels."""
+        combined_kraus_operators = sum([channel.E for channel in channels], [])
+        normalization_factor = 1 / np.sqrt(len(combined_kraus_operators))
+        normalized_operators = [
+            op * normalization_factor for op in combined_kraus_operators
+        ]
+
+        new_channel = cls(trotter_dt, dims)
+        new_channel.E = normalized_operators
+        return new_channel
+
+    def _apply(self, state_numpy, num_steps, frac_unitary=None):
         """Apply the error channel to a given quantum state using numpy."""
         for _ in range(num_steps):
             state_numpy = sum([E @ state_numpy @ E.T.conj() for E in self.E])
+            if frac_unitary is not None:
+                state_numpy = frac_unitary @ state_numpy @ frac_unitary.T.conj()
         return state_numpy
 
-    def apply_error_channel(self, state, duration, use_rust=True):
+    def apply_error_channel(self, state, duration, unitary=None, use_rust=False):
         """Apply the channel to a state over a specified duration."""
         # check if divides duration into integer number of steps
         # otherwise, will not apply channel for proper duration
@@ -62,10 +80,25 @@ class ErrorChannel(ABC):
         # assert all kraus operators are numpy arrays
         assert all([isinstance(E, np.ndarray) for E in self.E])
 
-        if use_rust:
-            state_numpy = apply_error_channel_rust(state_numpy, num_steps, self.E)
+        if num_steps == 0:
+            if unitary is not None:
+                return Qobj(unitary @ state_numpy @ unitary.T.conj(), dims=state.dims)
+            else:
+                return state
+
+        if unitary is not None:
+            # fractional_unitary = unitary ** (1 / num_steps)
+            fractional_unitary = fractional_matrix_power(unitary, 1 / num_steps)
         else:
-            state_numpy = self._apply(state_numpy, num_steps)
+            fractional_unitary = None
+
+        if use_rust:
+            # state_numpy = apply_error_channel_rust(state_numpy, num_steps, self.E)
+            state_numpy = apply_error_channel_with_unitary(
+                state_numpy, num_steps, self.E, fractional_unitary
+            )
+        else:
+            state_numpy = self._apply(state_numpy, num_steps, fractional_unitary)
 
         # Convert the final numpy array back to Qobj
         # preserve the dimensions of the original state
