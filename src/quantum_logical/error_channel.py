@@ -7,12 +7,10 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from qutip import Qobj
-from quantum_logical._lib import (
-    apply_error_channel_rust,
-    apply_error_channel_with_unitary,
-)
+from qutip import Qobj, qeye, tensor
 from scipy.linalg import fractional_matrix_power
+
+from quantum_logical._lib import apply_operators_in_place as rust_apply
 
 # import warnings
 
@@ -28,6 +26,7 @@ class ErrorChannel(ABC):
         # convert E to complex numpy arrays
         self.E = [np.array(E, dtype=complex) for E in self.E]
         self._verify_completeness()
+        self.cached_fractional_unitaries = {}
 
     @abstractmethod
     def _init_kraus_operators(self):
@@ -41,67 +40,62 @@ class ErrorChannel(ABC):
             completeness, np.eye(self.dims), atol=1e-6
         ), "Kraus operators do not satisfy the completeness relation"
 
-    @classmethod
-    def from_combined_channels(cls, channels, trotter_dt, dims):
-        """Create a new ErrorChannel from a combination of other channels."""
-        combined_kraus_operators = sum([channel.E for channel in channels], [])
-        normalization_factor = 1 / np.sqrt(len(combined_kraus_operators))
-        normalized_operators = [
-            op * normalization_factor for op in combined_kraus_operators
-        ]
+    # @classmethod
+    # def from_combined_channels(cls, channels, trotter_dt, dims):
+    #     """Create a new ErrorChannel from a combination of other channels."""
+    #     combined_kraus_operators = sum([channel.E for channel in channels], [])
+    #     normalization_factor = 1 / np.sqrt(len(combined_kraus_operators))
+    #     normalized_operators = [
+    #         op * normalization_factor for op in combined_kraus_operators
+    #     ]
 
-        new_channel = cls(trotter_dt, dims)
-        new_channel.E = normalized_operators
-        return new_channel
+    #     new_channel = cls(trotter_dt, dims)
+    #     new_channel.E = normalized_operators
+    #     return new_channel
 
-    def _apply(self, state_numpy, num_steps, frac_unitary=None):
-        """Apply the error channel to a given quantum state using numpy."""
+    def _get_fractional_unitary(self, unitary, num_steps):
+        """Compute and cache the fractional unitary."""
+        if unitary is not None and num_steps > 0:
+            key = (unitary.tobytes(), num_steps)  # Unique key for caching
+            if key not in self.cached_fractional_unitaries:
+                fractional_unitary = fractional_matrix_power(unitary, 1 / num_steps)
+                self.cached_fractional_unitaries[key] = fractional_unitary
+            return self.cached_fractional_unitaries[key]
+        return None
+
+    def _apply(self, state_numpy, num_steps, operators):
+        """Apply a sequence of operators to a given quantum state using
+        numpy."""
         for _ in range(num_steps):
-            state_numpy = sum([E @ state_numpy @ E.T.conj() for E in self.E])
-            if frac_unitary is not None:
-                state_numpy = frac_unitary @ state_numpy @ frac_unitary.T.conj()
+            new_state = np.zeros_like(state_numpy)
+            for op in operators:
+                new_state += op @ state_numpy @ op.T.conj()
+            state_numpy = new_state
         return state_numpy
 
-    def apply_error_channel(self, state, duration, unitary=None, use_rust=False):
+    def apply_error_channel(self, state, duration, unitary=None, use_rust=True):
         """Apply the channel to a state over a specified duration."""
-        # check if divides duration into integer number of steps
-        # otherwise, will not apply channel for proper duration
-        # if not np.isclose(duration % self.trotter_dt, 0):
-        #     error = duration % self.trotter_dt
-        #     tolerance = 1e-6
-        #     if error > tolerance:
-        #         warnings.warn(
-        #             f"Duration is not a multiple of trotter_dt. Error: {error}.",
-        #             UserWarning,
-        #         )
-
         num_steps = int(duration / self.trotter_dt)
         state_numpy = state.full()  # Convert Qobj to numpy array for calculation
-        # assert all kraus operators are numpy arrays
-        assert all([isinstance(E, np.ndarray) for E in self.E])
 
         if num_steps == 0:
-            if unitary is not None:
-                return Qobj(unitary @ state_numpy @ unitary.T.conj(), dims=state.dims)
-            else:
-                return state
+            return (
+                state
+                if unitary is None
+                else Qobj(unitary @ state_numpy @ unitary.T.conj(), dims=state.dims)
+            )
 
-        if unitary is not None:
-            # fractional_unitary = unitary ** (1 / num_steps)
-            fractional_unitary = fractional_matrix_power(unitary, 1 / num_steps)
-        else:
-            fractional_unitary = None
+        operators = self.E.copy()
+        fractional_unitary = self._get_fractional_unitary(unitary, num_steps)
+        if fractional_unitary is not None:
+            operators.insert(0, fractional_unitary)
 
         if use_rust:
-            # state_numpy = apply_error_channel_rust(state_numpy, num_steps, self.E)
-            state_numpy = apply_error_channel_with_unitary(
-                state_numpy, num_steps, self.E, fractional_unitary
-            )
+            # Update this call to match the new Rust function signature
+            state_numpy = rust_apply(state_numpy, num_steps, operators)
         else:
-            state_numpy = self._apply(state_numpy, num_steps, fractional_unitary)
+            state_numpy = self._apply(state_numpy, num_steps, operators)
 
-        # Convert the final numpy array back to Qobj
-        # preserve the dimensions of the original state
         return Qobj(state_numpy, dims=state.dims)
 
 
@@ -164,6 +158,95 @@ class QutritAmplitudeDamping(ErrorChannel):
         )
 
         return [A_0, A_01, A_12, A_02]
+
+
+class MultiQubitErrorChannel(ErrorChannel):
+    """A class for error channels that can be applied to multi-qubit
+    systems."""
+
+    def __init__(self, N, T1s, T2s, trotter_dt):
+        """Initializes with given arrays of T1 and T2 times for each qubit, and
+        a trotter step size."""
+        self.N = N
+        assert len(T1s) == len(
+            T2s
+        ), "Arrays of T1 and T2 times must have the same length"
+        self.num_qubits = len(T1s)
+        self.T1s = T1s
+        self.T2s = T2s
+        dims = 2**self.num_qubits
+        self.trotter_dt = trotter_dt
+        super().__init__(trotter_dt, dims)
+
+    def _init_kraus_operators(self):
+        """Creates the multi-qubit Kraus operators for the error channels."""
+        # Create single-qubit Kraus operators for amplitude and phase damping for each qubit
+        kraus_ops = []
+
+        for T1, T2 in zip(self.T1s, self.T2s):
+            # Combine amplitude and phase damping operators for each qubit
+            amps = AmplitudeDamping(T1, self.trotter_dt).E
+            phases = PhaseDamping(T2, self.trotter_dt).E
+            combined_ops = amps + phases
+
+            # Normalize the combined operators for each qubit
+            normalization_factor = np.sqrt(2 * self.N)  # ?
+            normalized_ops = [Qobj(op) / normalization_factor for op in combined_ops]
+
+            kraus_ops.append(normalized_ops)
+
+        # Tensor the single-qubit Kraus operators together with identity operators for the other qubits
+        multi_qubit_kraus_ops = []
+
+        for i in range(self.num_qubits):
+            for op in kraus_ops[i]:
+                kraus_op_multi = [
+                    op if k == i else qeye(2) for k in range(self.num_qubits)
+                ]
+                multi_qubit_kraus_ops.append(tensor(*kraus_op_multi))
+
+        return multi_qubit_kraus_ops
+
+
+class MultiQutritErrorChannel(ErrorChannel):
+    N = 2
+
+    def __init__(self, tau, k1, k2, trotter_dt, num_qutrits):
+        self.num_qutrits = num_qutrits
+        self.tau = tau
+        self.k1 = k1
+        self.k2 = k2
+        self.trotter_dt = trotter_dt
+        dims = 3**num_qutrits
+        super().__init__(trotter_dt, dims)
+
+    def _init_kraus_operators(self):
+        kraus_ops = []
+        for _ in range(self.num_qutrits):
+            # Initialize the single-qutrit amplitude damping channel
+            single_qutrit_channel = QutritAmplitudeDamping(
+                self.tau, self.k1, self.k2, self.trotter_dt
+            )
+            kraus_ops_single = single_qutrit_channel.E
+
+            # Normalize if needed
+            normalization_factor = np.sqrt(1 * self.N)
+            normalized_ops = [
+                Qobj(op) / normalization_factor for op in kraus_ops_single
+            ]
+
+            kraus_ops.append(normalized_ops)
+
+        # tensor wiith identity operators to create the multi-qutrit kraus operators
+        multi_qutrit_kraus_ops = []
+        for i in range(self.num_qutrits):
+            for op in kraus_ops[i]:
+                kraus_op_multi = [
+                    op if k == i else qeye(3) for k in range(self.num_qutrits)
+                ]
+                multi_qutrit_kraus_ops.append(tensor(*kraus_op_multi))
+
+        return multi_qutrit_kraus_ops
 
 
 # # TODO?

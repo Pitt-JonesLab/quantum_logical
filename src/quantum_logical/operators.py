@@ -25,6 +25,18 @@ def _qutrit_to_3coords(qutrit_unitary):
     u_ef = reduce_to_two_qubit_subspace(qutrit_unitary, [1, 2])
     u_gf = reduce_to_two_qubit_subspace(qutrit_unitary, [0, 2])
 
+    # NOTE, c1c2c3() can still calculate coordinates for non-unitary matrices
+    # but unclear to me how meaningful the result will be. I would expected matrices
+    # that are nearly unitary but, for example, are not normalized to be
+    # trace-preserving to have coordinates as if it was properly normalized.
+
+    if not u_ge.isunitary:
+        raise Warning("u_ge is not unitary")
+    if not u_ef.isunitary:
+        raise Warning("u_ef is not unitary")
+    if not u_gf.isunitary:
+        raise Warning("u_gf is not unitary")
+
     return c1c2c3(u_ge), c1c2c3(u_ef), c1c2c3(u_gf)
 
 
