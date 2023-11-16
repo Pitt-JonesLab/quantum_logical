@@ -1,11 +1,8 @@
-use pyo3::prelude::*;
 use ndarray::Array2;
-use ndarray::ArrayBase;
 use ndarray::OwnedRepr;
-use ndarray::Dim;
 use num_complex::Complex64;
-use rayon::prelude::*;
 use numpy::{PyArray2, ToPyArray};
+use pyo3::prelude::*;
 
 fn dag(op: &Array2<Complex64>) -> Array2<Complex64> {
     op.t().mapv(|elem| elem.conj())
@@ -16,26 +13,31 @@ fn apply_operators_in_place(
     py: Python,
     state: &PyArray2<Complex64>,
     num_steps: usize,
-    operators: Vec<&PyArray2<Complex64>>
+    operator_groups: Vec<Vec<&PyArray2<Complex64>>>,
 ) -> PyResult<PyObject> {
-    let mut new_state = state.to_owned_array();
-    let ops: Vec<Array2<Complex64>> = operators
-        .iter()
-        .map(|&op| op.to_owned_array())
-        .collect();
-
-    let dags: Vec<Array2<Complex64>> = ops.iter().map(|op| dag(op)).collect();
+    let mut state_numpy = state.to_owned_array();
 
     for _ in 0..num_steps {
-        let temp_states: Vec<Array2<Complex64>> = ops.par_iter().zip(dags.par_iter())
-            .map(|(op, op_dag)| op.dot(&new_state).dot(op_dag))
-            .collect();
-
-        let sum_state: Array2<Complex64> = temp_states.into_par_iter().reduce_with(|a, b| a + b).unwrap();
-        new_state = sum_state;
+        for operator_group in &operator_groups {
+            if operator_group.len() > 1 {
+                // Assuming this is a group of Kraus operators
+                let mut new_state = Array2::<Complex64>::zeros(state_numpy.raw_dim());
+                for op in operator_group {
+                    let op_numpy = op.to_owned_array();
+                    let op_dag = dag(&op_numpy);
+                    new_state = new_state + op_numpy.dot(&state_numpy).dot(&op_dag);
+                }
+                state_numpy = new_state;
+            } else {
+                // Assuming this is a unitary operation
+                let op_numpy = operator_group[0].to_owned_array();
+                let op_dag = dag(&op_numpy);
+                state_numpy = op_numpy.dot(&state_numpy).dot(&op_dag);
+            }
+        }
     }
 
-    Ok(new_state.to_pyarray(py).to_owned().into())
+    Ok(state_numpy.to_pyarray(py).to_owned().into())
 }
 
 #[pymodule]

@@ -5,14 +5,13 @@
 # this considers "hot"-qubits, ground state is not perfectly |0>
 
 from abc import ABC, abstractmethod
+from typing import Iterable
 
 import numpy as np
 from qutip import Qobj, qeye, tensor
 from scipy.linalg import fractional_matrix_power
 
 from quantum_logical._lib import apply_operators_in_place as rust_apply
-
-# import warnings
 
 
 class ErrorChannel(ABC):
@@ -29,7 +28,7 @@ class ErrorChannel(ABC):
         self.cached_fractional_unitaries = {}
 
     @abstractmethod
-    def _init_kraus_operators(self):
+    def _init_kraus_operators(self) -> Iterable[Qobj]:
         """Initialize and return Kraus operators as numpy arrays."""
         pass
 
@@ -67,28 +66,34 @@ class ErrorChannel(ABC):
         """Apply a sequence of operators to a given quantum state using
         numpy."""
         for _ in range(num_steps):
-            new_state = np.zeros_like(state_numpy)
-            for op in operators:
-                new_state += op @ state_numpy @ op.T.conj()
-            state_numpy = new_state
+            for op_set in operators:
+                if isinstance(op_set, list):  # This is a set of Kraus operators
+                    new_state = np.zeros_like(state_numpy)
+                    for op in op_set:
+                        new_state += op @ state_numpy @ op.T.conj()
+                    state_numpy = new_state
+                else:  # This is the unitary
+                    state_numpy = op_set @ state_numpy @ op_set.T.conj()
         return state_numpy
 
     def apply_error_channel(self, state, duration, unitary=None, use_rust=True):
-        """Apply the channel to a state over a specified duration."""
         num_steps = int(duration / self.trotter_dt)
-        state_numpy = state.full()  # Convert Qobj to numpy array for calculation
+
+        # Convert Qobj to numpy array for calculation
+        state_numpy = state.full() if isinstance(state, Qobj) else state
+        unitary = unitary.full() if isinstance(unitary, Qobj) else unitary
 
         if num_steps == 0:
             return (
-                state
-                if unitary is None
-                else Qobj(unitary @ state_numpy @ unitary.T.conj(), dims=state.dims)
+                Qobj(unitary @ state_numpy @ unitary.T.conj(), dims=state.dims)
+                if unitary is not None
+                else state
             )
 
-        operators = self.E.copy()
+        operators = [self.E.copy()]  # Nested list for Kraus operators
         fractional_unitary = self._get_fractional_unitary(unitary, num_steps)
         if fractional_unitary is not None:
-            operators.insert(0, fractional_unitary)
+            operators.append(fractional_unitary)  # Unitary is a separate element
 
         if use_rust:
             # Update this call to match the new Rust function signature
@@ -96,7 +101,7 @@ class ErrorChannel(ABC):
         else:
             state_numpy = self._apply(state_numpy, num_steps, operators)
 
-        return Qobj(state_numpy, dims=state.dims)
+        return Qobj(state_numpy, dims=state.dims) / np.trace(state_numpy)
 
 
 class AmplitudeDamping(ErrorChannel):
