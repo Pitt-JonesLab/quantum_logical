@@ -21,3 +21,8 @@ pip install -e git+https://github.com/evmckinney9/quantum_logical/#egg=quantum_l
 ```
 
 Then get started by exploring the main demo located at `src/mirror_gates/notebooks/bench.ipynb`.
+
+## 👯 Contributors
+<a href = "https://github.com/Pitt-JonesLab/quantum_logical/graphs/contributors">
+  <img src = "https://contrib.rocks/image?repo=Pitt-JonesLab/quantum_logical"/>
+</a>
