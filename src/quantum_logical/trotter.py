@@ -7,6 +7,8 @@ from scipy.linalg import fractional_matrix_power
 
 from quantum_logical.channel import Channel, CPTPMap
 
+__all__ = ["TrotterGroup"]
+
 
 class TrotterGroup:
     """Group of operators for Trotterized application."""

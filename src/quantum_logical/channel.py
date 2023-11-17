@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 from qutip import Qobj, qeye, tensor
 
+__all__ = ["AmplitudeDamping", "PhaseDamping", "Channel"]
+
 
 class CPTPMap(ABC):
     """Abstract class for operators, unitary gates or error channels.

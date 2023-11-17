@@ -7,6 +7,13 @@ import qutip
 from qutip import Qobj, basis, tensor
 from weylchamber import c1c2c3
 
+__all__ = [
+    "define_observables",
+    "reduce_to_two_qubit_subspace",
+    "selective_destroy",
+    # "_qutrit_to_3coords",
+]
+
 
 def define_observables(N, d=3, exclude_symmetric=True):
     """Generate observables for an N-qubit system.
