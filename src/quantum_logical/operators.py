@@ -1,11 +1,46 @@
 """Selectively destroy a particle in a quantum system."""
 
-from itertools import product
+from itertools import combinations_with_replacement, product
 
 import numpy as np
 import qutip
 from qutip import Qobj, basis, tensor
 from weylchamber import c1c2c3
+
+
+def define_observables(N, d=3, exclude_symmetric=True):
+    """Generate observables for an N-qubit system.
+
+    Args:
+        N (int): The number of qubits in the system.
+        d (int): The dimension of the Hilbert space for each qubit (default is 3 for qutrits).
+        exclude_symmetric (bool): If True, generate unique combinations without regard to order.
+                                  If False, generate all possible permutations considering the order.
+
+    Returns:
+        dict: A dictionary of observables keyed by their state labels.
+        list: A list of observable state labels.
+    """
+    basis_states = [basis(d, i) for i in range(d)]
+    state_labels = ["g", "e", "f"]  # Labels for the states
+
+    observable_labels = []
+    observables = {}
+
+    # Generate combinations or permutations based on exclude_symmetric
+    state_sequences = (
+        combinations_with_replacement(state_labels, N)
+        if exclude_symmetric
+        else product(state_labels, repeat=N)
+    )
+
+    for combo in state_sequences:
+        label = "".join(combo)
+        observable_labels.append(label)
+        state = tensor([basis_states[state_labels.index(i)] for i in combo])
+        observables[label] = state * state.dag()
+
+    return observables, observable_labels
 
 
 def _qutrit_to_3coords(qutrit_unitary):
