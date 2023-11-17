@@ -5,6 +5,12 @@ from qutip.operators import tensor
 
 from quantum_logical.operators import selective_destroy
 
+__all__ = [
+    "ConversionGainInteraction",
+    "ConversionGainFiveWave",
+    "CNOT_FC_EF",
+]
+
 
 class Hamiltonian:
     """Hamiltonian for a quantum system."""

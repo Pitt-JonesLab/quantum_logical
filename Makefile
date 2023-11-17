@@ -7,7 +7,7 @@ init:
 	rm -rf .venv
 	$(PYTHON_VERSION) -m venv .venv
 	@$(PIP) install --upgrade pip
-	$(PIP) install -e .[dev] --quiet
+	$(PIP) install -e .[dev]
 	@$(PRE_COMMIT) install
 	@$(PRE_COMMIT) autoupdate
 	sudo chmod +x .git/hooks/pre-commit

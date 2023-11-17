@@ -1,11 +1,53 @@
 """Selectively destroy a particle in a quantum system."""
 
-from itertools import product
+from itertools import combinations_with_replacement, product
 
 import numpy as np
 import qutip
 from qutip import Qobj, basis, tensor
 from weylchamber import c1c2c3
+
+__all__ = [
+    "define_observables",
+    "reduce_to_two_qubit_subspace",
+    "selective_destroy",
+    # "_qutrit_to_3coords",
+]
+
+
+def define_observables(N, d=3, exclude_symmetric=True):
+    """Generate observables for an N-qubit system.
+
+    Args:
+        N (int): The number of qubits in the system.
+        d (int): The dimension of the Hilbert space for each qubit (default is 3 for qutrits).
+        exclude_symmetric (bool): If True, generate unique combinations without regard to order.
+                                  If False, generate all possible permutations considering the order.
+
+    Returns:
+        dict: A dictionary of observables keyed by their state labels.
+        list: A list of observable state labels.
+    """
+    basis_states = [basis(d, i) for i in range(d)]
+    state_labels = ["g", "e", "f"]  # Labels for the states
+
+    observable_labels = []
+    observables = {}
+
+    # Generate combinations or permutations based on exclude_symmetric
+    state_sequences = (
+        combinations_with_replacement(state_labels, N)
+        if exclude_symmetric
+        else product(state_labels, repeat=N)
+    )
+
+    for combo in state_sequences:
+        label = "".join(combo)
+        observable_labels.append(label)
+        state = tensor([basis_states[state_labels.index(i)] for i in combo])
+        observables[label] = state * state.dag()
+
+    return observables, observable_labels
 
 
 def _qutrit_to_3coords(qutrit_unitary):
@@ -24,6 +66,18 @@ def _qutrit_to_3coords(qutrit_unitary):
     u_ge = reduce_to_two_qubit_subspace(qutrit_unitary, [0, 1])
     u_ef = reduce_to_two_qubit_subspace(qutrit_unitary, [1, 2])
     u_gf = reduce_to_two_qubit_subspace(qutrit_unitary, [0, 2])
+
+    # NOTE, c1c2c3() can still calculate coordinates for non-unitary matrices
+    # but unclear to me how meaningful the result will be. I would expected matrices
+    # that are nearly unitary but, for example, are not normalized to be
+    # trace-preserving to have coordinates as if it was properly normalized.
+
+    if not u_ge.isunitary:
+        raise Warning("u_ge is not unitary")
+    if not u_ef.isunitary:
+        raise Warning("u_ef is not unitary")
+    if not u_gf.isunitary:
+        raise Warning("u_gf is not unitary")
 
     return c1c2c3(u_ge), c1c2c3(u_ef), c1c2c3(u_gf)
 
