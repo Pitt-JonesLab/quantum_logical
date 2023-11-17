@@ -1,14 +1,14 @@
-"""
-   Examples of Error Channels:
-        - Phase flips
-        - Bit flips
+"""Logical encoding of qubits.
 
-    These errors on the hardware qubits propagate into errors in the logical qubits.
-    The errors that happen with the highest probability are mapped to error ancilla
-    states in the logical encoding. This type of trick, known as an erasure error,
-    signals leaving the codeword Hilbert space and is inspired by concepts from
-    photonic quantum computing.
+Examples of Error Channels:
+    - Phase flips
+    - Bit flips
 
+These errors on the hardware qubits propagate into errors in the logical qubits.
+The errors that happen with the highest probability are mapped to error ancilla
+states in the logical encoding. This type of trick, known as an erasure error,
+signals leaving the codeword Hilbert space and is inspired by concepts from
+photonic quantum computing.
 """
 
 from abc import ABC
@@ -49,8 +49,7 @@ class LogicalBasis(ABC):
 
     @property
     def transform_operator(self) -> Qobj:
-        """Operator that changes from the computational basis to the logical
-        basis.
+        """Operator to change from the computational to logical basis.
 
         A = |L_0><0| + |L_1><1|
 
@@ -61,6 +60,7 @@ class LogicalBasis(ABC):
 
     @property
     def projector(self) -> Qobj:
+        """Projector onto the logical basis."""
         return self.zero_ket * self.zero_ket.dag() + self.one_ket * self.one_ket.dag()
 
 
@@ -88,7 +88,7 @@ class Ancilla:
 
     @property
     def _detection_operator(self) -> Qobj:
-        """Operator that detects errors in the logical basis.
+        r"""Operator that detects errors in the logical basis.
 
         \sum_i |1_ancilla_i> \otimes |\tilde{psi}_i> <0_ancilla_i| \otimes <\tilde{psi}_i|
 
@@ -119,7 +119,10 @@ class Ancilla:
 
 
 class LogicalEncoding:
+    """Logical encoding of qubits."""
+
     def __init__(self, logical_basis: LogicalBasis, *ancilla, error_channels=None):
+        """Initialize a logical encoding."""
         self.logical_basis = logical_basis
         self.ancilla = ancilla
 
@@ -140,6 +143,7 @@ class PhaseReptition(LogicalEncoding):
     """
 
     def __init__(self):
+        """Initialize a 3-bit phase repetition encoding."""
         logical0 = tensor(p_ge, p_ge, p_ge)
         logical1 = tensor(m_ge, m_ge, m_ge)
         logical_basis = LogicalBasis(logical0, logical1)
@@ -152,6 +156,7 @@ class PhaseReptition(LogicalEncoding):
         super().__init__(logical_basis, ancillae)
 
     def detection_subroutine(self):
+        """Subroutine for detecting errors in the logical basis."""
         return super().detection_subroutine()
 
 
@@ -171,6 +176,7 @@ class DualRail(LogicalEncoding):
     """
 
     def __init__(self):
+        """Initialize a dual-rail encoding."""
         logical0 = tensor(basis(2, 0), basis(2, 1))
         logical1 = tensor(basis(2, 1), basis(2, 0))
         # to protect against photon loss, define error state as |00>
@@ -193,6 +199,7 @@ class VSLQ(LogicalEncoding):
     """
 
     def __init__(self):
+        """Initialize a VSLQ encoding."""
         logical0 = tensor(p_gf, p_gf)
         logical1 = tensor(m_gf, m_gf)
         logical_basis = LogicalBasis(logical0, logical1)
@@ -213,6 +220,7 @@ class StarCode(LogicalEncoding):
     """
 
     def __init__(self):
+        """Initialize a star code encoding."""
         logical0 = tensor(p_gf, m_gf) - tensor(m_gf, p_gf)
         logical1 = tensor(p_gf, p_gf) - tensor(m_gf, m_gf)
         logical_basis = LogicalBasis(logical0, logical1)
@@ -230,6 +238,7 @@ class SNAILConcatWithAncilla(LogicalEncoding):
     """
 
     def __init__(self):
+        """Initialize a concatenated SNAIL encoding."""
         logical0 = tensor(p_gf, p_gf, p_gf)
         logical1 = tensor(m_gf, m_gf, m_gf)
         logical_basis = LogicalBasis(logical0, logical1)
