@@ -30,9 +30,6 @@ class TrotterGroup:
         if self.continuous_operators:
             if operator.dims != self.continuous_operators[0].dims:
                 raise ValueError("Dimension mismatch among operators in TrotterGroup.")
-
-        if isinstance(operator, TrotterGroup):
-            self.continuous_operators.extend(operator.operators)
         elif isinstance(operator, Channel):
             if operator._trotter_dt != self.trotter_dt:
                 operator.set_trotter_dt(self.trotter_dt)
