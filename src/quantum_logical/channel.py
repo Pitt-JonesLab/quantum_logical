@@ -160,9 +160,9 @@ class AmplitudeDamping(Channel):
 class PhaseDamping(Channel):
     """Phase damping channel for qubits."""
 
-    def __init__(self, T2, num_qubits=1, hilbert_space_dim=2):
-        """Initialize with a given T2 dephasing time and number of qubits."""
-        self.T2 = T2
+    def __init__(self, T1, T2, num_qubits=1, hilbert_space_dim=2):
+        """Initialize with a given T_phi and number of qubits."""
+        self.Tphi = 1 / (1 / T2 - 1 / (2 * T1))
         self.num_qubits = num_qubits
         self.hilbert_space_dim = hilbert_space_dim
         super().__init__(dims=hilbert_space_dim**num_qubits)
@@ -170,10 +170,19 @@ class PhaseDamping(Channel):
     def _create_single_qubit_operators(self):
         """Create single-qubit Kraus operators for phase damping."""
         if self.hilbert_space_dim == 2:  # standard qubit case
-            _gamma = 1 - np.exp(-self._trotter_dt / self.T2)
+            _gamma = 1 - np.exp(-self._trotter_dt / self.Tphi)
             E0_single = np.array([[1, 0], [0, np.sqrt(1 - _gamma)]])
             E1_single = np.array([[0, 0], [0, np.sqrt(_gamma)]])
             return [E0_single, E1_single]
+
+        elif self.hilbert_space_dim == 3:  # qutrit case
+            _gamma = 1 - np.exp(-self._trotter_dt / self.Tphi)
+            E0_single = np.array(
+                [[1, 0, 0], [0, np.sqrt(1 - _gamma), 0], [0, 0, np.sqrt(1 - _gamma)]]
+            )
+            E1_single = np.array([[0, 0, 0], [0, np.sqrt(_gamma), 0], [0, 0, 0]])
+            E2_single = np.array([[0, 0, 0], [0, 0, 0], [0, 0, np.sqrt(_gamma)]])
+            return [E0_single, E1_single, E2_single]
 
         else:
             raise NotImplementedError("Unsupported Hilbert space dimension.")
