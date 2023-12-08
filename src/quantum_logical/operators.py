@@ -58,6 +58,7 @@ def transform_ge_to_gf_gate(gate):
             transformed_gate += qt.tensor(e * e.dag(), state * state.dag()) + qt.tensor(
                 state * state.dag(), e * e.dag()
             )
+        transformed_gate += qt.tensor(e * e.dag(), e * e.dag())
     else:
         raise ValueError("Input gate must be a 2x2 or 4x4 matrix.")
 
