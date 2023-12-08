@@ -4,15 +4,74 @@ from itertools import combinations_with_replacement, product
 
 import numpy as np
 import qutip
+import qutip as qt
 from qutip import Qobj, basis, tensor
 from weylchamber import c1c2c3
 
+# from qiskit.circuit.library import XGate, CZGate
+
 __all__ = [
+    "transform_ge_to_gf_gate",
     "define_observables",
     "reduce_to_two_qubit_subspace",
     "selective_destroy",
     # "_qutrit_to_3coords",
 ]
+
+
+def transform_ge_to_gf_gate(gate):
+    """Transform a 1Q or 2Q qubit gate into a corresponding qutrit gate.
+
+    In the qutrit system, the additional state |e> is treated as an inactive
+    state.
+
+    The transformation is defined as follows:
+    - For a 1Q gate, we use the isometry U = |g><0| + |f><1|, applying it to the gate.
+    - For a 2Q gate, we use the tensor product of the isometries and add the identity
+      operations for states involving |e>.
+    - The resulting gate G' is unitary and acts as an identity operation on the |e> state.
+
+    Parameters:
+    - gate: A qubit gate represented as a qutip Qobj (2x2 for 1Q, 4x4 for 2Q).
+
+    Returns:
+    - A qutip Qobj representing the transformed qutrit gate.
+    """
+    gate = qt.Qobj(gate)
+
+    # Basis states for qutrits
+    g, e, f = qt.basis(3, 0), qt.basis(3, 1), qt.basis(3, 2)
+
+    # Define the isometry for a single qutrit
+    U_single = qt.Qobj(np.array([[1, 0], [0, 0], [0, 1]]))
+
+    if gate.shape == (2, 2):
+        # For a 1Q gate
+        transformed_gate = U_single * gate * U_single.dag() + e * e.dag()
+    elif gate.shape == (4, 4):
+        # For a 2Q gate
+        U_double = qt.tensor(U_single, U_single)
+        gate.dims = [[2, 2], [2, 2]]
+        transformed_gate = U_double * gate * U_double.dag()
+        # Correctly adding identity operations for states involving |e>
+        for state in [g, f]:
+            transformed_gate += qt.tensor(e * e.dag(), state * state.dag()) + qt.tensor(
+                state * state.dag(), e * e.dag()
+            )
+    else:
+        raise ValueError("Input gate must be a 2x2 or 4x4 matrix.")
+
+    return transformed_gate
+
+
+# # Example usage
+# x = XGate().to_matrix()
+# cz = CZGate().to_matrix()
+# X_transformed = transform_ge_to_gf_gate(x)
+# CNOT_transformed = transform_ge_to_gf_gate(cz)
+
+# print("Transformed X gate:\n", X_transformed)
+# print("\nTransformed CNOT gate:\n", CNOT_transformed)
 
 
 def define_observables(N, d=3, exclude_symmetric=True):

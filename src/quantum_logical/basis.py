@@ -17,7 +17,7 @@ import numpy as np
 from qutip import Qobj, tensor
 from qutip.states import basis
 
-from quantum_logical.unitary_util import ImplicitUnitaryGate
+# from quantum_logical.unitary_util import ImplicitUnitaryGate
 
 zero = basis(2, 0)  # |0>
 one = basis(2, 1)  # |1>
@@ -97,16 +97,17 @@ class Ancilla:
         Returns:
             Qobj: Operator that detects errors in the logical basis.
         """
-        return Qobj(
-            ImplicitUnitaryGate.create_unitary_from_implicit_operator(
-                sum(
-                    [
-                        tensor(one, error_state) * tensor(zero, error_state).dag()
-                        for error_state in self.error_states
-                    ]
-                )
-            )
-        )
+        return NotImplementedError()
+        # return Qobj(
+        #     ImplicitUnitaryGate.create_unitary_from_implicit_operator(
+        #         sum(
+        #             [
+        #                 tensor(one, error_state) * tensor(zero, error_state).dag()
+        #                 for error_state in self.error_states
+        #             ]
+        #         )
+        #     )
+        # )
 
 
 # could imagine 2 scenarios:
