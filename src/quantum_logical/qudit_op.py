@@ -1,9 +1,14 @@
 """Qudit operations."""
+import warnings
+
 import numpy as np
-from qiskit.circuit import Gate
+from qiskit.circuit import ControlledGate, Gate
+from qiskit.circuit.library import CXGate, XGate
 from qiskit.extensions import UnitaryGate
 from qiskit.extensions.exceptions import ExtensionError
 from qiskit.quantum_info.operators.predicates import is_unitary_matrix
+
+from quantum_logical.operators import transform_ge_to_gf_gate
 
 
 class QutritUnitary(UnitaryGate):
@@ -48,3 +53,52 @@ class QutritUnitary(UnitaryGate):
 
         # Store instruction params
         Gate.__init__(self, "unitary", num_qubits, [data], label=label)
+
+    def control(self, num_ctrl_qubits=1, label=None, ctrl_state=None):
+        """Return controlled version of gate.
+
+        Args:
+            num_ctrl_qubits (int): number of controls to add to gate (default=1)
+            label (str): optional gate label
+            ctrl_state (int or str or None): The control state in decimal or as a
+                bit string (e.g. '1011'). If None, use 2**num_ctrl_qubits-1.
+
+        Returns:
+            UnitaryGate: controlled version of gate.
+
+        Raises:
+            QiskitError: Invalid ctrl_state.
+            ExtensionError: Non-unitary controlled unitary.
+        """
+        warnings.warn(
+            "Controlled QutritUnitary class is hardcoded to only be CX_gf gate."
+        )
+        cx_gf = transform_ge_to_gf_gate(CXGate().to_matrix())
+        cx_gf = QutritUnitary(cx_gf, "cx_gf")
+        return cx_gf
+
+        # return QutritControlledGate(
+        #     "c-unitary",
+        #     num_qubits=self.num_qubits + num_ctrl_qubits,
+        #     params=[mat],
+        #     label=label,
+        #     num_ctrl_qubits=num_ctrl_qubits,
+        #     definition=iso,  # .definition,
+        #     ctrl_state=ctrl_state,
+        #     base_gate=self.copy(),
+        # )
+
+
+class QutritControlledGate(ControlledGate):
+    """Controlled version of a qutrit unitary gate."""
+
+    def __init__(self, name, **kwargs):
+        """Create a controlled gate."""
+        raise NotImplementedError
+
+
+# TODO verify endian-ness :)
+if __name__ == "__main__":
+    x_gf = transform_ge_to_gf_gate(XGate().to_matrix())
+    x_gf = QutritUnitary(x_gf, "x_gf")
+    x_gf.control(1)
