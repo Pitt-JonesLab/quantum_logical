@@ -131,7 +131,7 @@ class QuantumErrorCorrectionCode(ABC):
                 qc.append(pauli_op.control(1), [ancilla_register[i], code_register[j]])
         qc.h(ancilla_register)
 
-        qc.barrier()
+        # qc.barrier()
         qc.measure(ancilla_register, ancilla_classical_register)
 
         # Implement classically conditioned corrections
@@ -140,7 +140,7 @@ class QuantumErrorCorrectionCode(ABC):
             with qc.if_test((ancilla_classical_register, i + 1)):
                 qc.append(correction_gate, [code_register[i]])
 
-        qc.barrier()
+        # qc.barrier()
 
         return qc
 
@@ -182,7 +182,7 @@ class QuantumErrorCorrectionCode(ABC):
             raise ValueError(
                 f"Number of state qubits ({len(state_qubits)}) must match code length ({self.code_length})."
             )
-        qc = qc.compose(
+        qc.compose(
             self._encode_subroutine().inverse(), qubits=state_qubits, inplace=True
         )
         return qc

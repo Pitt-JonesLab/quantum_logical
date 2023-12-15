@@ -7,166 +7,185 @@ logical qubit 0 is now encoded qubits [0,1,2]. we might find it useful
 to have logical qubits point to both a quantum register and a classical
 register (where the syndrome measurements take place).
 """
-
 from qiskit import ClassicalRegister, QuantumRegister
 from qiskit.circuit import Qubit
 from qiskit.transpiler.exceptions import LayoutError
 from qiskit.transpiler.layout import Layout
 
 
-class EncodedLayout(Layout):
-    """Subclass Layout to make an EncodedLayout object.
+class EncodedRegisters:
+    """EncodedRegisters is a set of quantum and classical registers."""
 
-    Rather than mapping virtual to physical bits, map logical virtual
-    bits to virtual quantum and classical registers.
+    def __init__(
+        self,
+        codeword_register,
+        ancilla_register,
+        classical_codeword_register,
+        classical_ancilla_register,
+    ):
+        """Initialize an EncodedRegisters object."""
+        self.codeword_register = codeword_register
+        self.ancilla_register = ancilla_register
+        self.classical_codeword_register = classical_codeword_register
+        self.classical_ancilla_register = classical_ancilla_register
+
+    def __iter__(self):
+        """Define list of registers to iterate over."""
+        return iter(
+            [
+                self.codeword_register,
+                self.ancilla_register,
+                self.classical_codeword_register,
+                self.classical_ancilla_register,
+            ]
+        )
+
+    def __hash__(self):
+        """Define hash function."""
+        return hash(
+            (
+                self.codeword_register,
+                self.ancilla_register,
+                self.classical_codeword_register,
+                self.classical_ancilla_register,
+            )
+        )
+
+    def __eq__(self, other):
+        """Define equality function."""
+        return (
+            self.codeword_register == other.codeword_register
+            and self.ancilla_register == other.ancilla_register
+            and self.classical_codeword_register == other.classical_codeword_register
+            and self.classical_ancilla_register == other.classical_ancilla_register
+        )
+
+
+class EncodedLayout(Layout):
+    """EncodedLayout maps qubits to sets of quantum/classical registers.
+
+    This subclass of Layout is designed to handle the mapping of logical
+    virtual qubits to virtual quantum and classical registers,
+    specifically for encoded quantum circuits. Each logical qubit is
+    associated with a set of registers including a codeword quantum
+    register, an ancilla quantum register, and their corresponding
+    classical registers.
     """
 
     def __init__(self, input_dict=None):
-        """Initialize an EncodedLayout object.
-
-        Args:
-            input_dict (dict): A dictionary representing a layout.
-        """
+        """Initialize an EncodedLayout object."""
         super().__init__(input_dict)
 
     def from_dict(self, input_dict):
-        """Populate a Layout from a dictionary.
-
-        The dictionary must be a bijective mapping between
-        virtual qubits (tuple) and virtual registers
-        (tuple of QuantumRegister and ClassicalRegister)
+        """Populate the EncodedLayout from a dictionary mapping.
 
         Args:
-            input_dict (dict):
-                e.g.::
-
-                {(QuantumRegister(3, 'qr'), 0):
-                    (QuantumRegister(3, "er0"), ClassicalRegister(3, "cr0")),
-                 (QuantumRegister(3, 'qr'), 1):
-                    (QuantumRegister(3, "er1"), ClassicalRegister(3, "cr1")),
-                 (QuantumRegister(3, 'qr'), 2):
-                    (QuantumRegister(3, "er2"), ClassicalRegister(3, "cr2"))}]
-
-                Can be written more concisely as follows:
-
-                * logical to encoded virtual qubits:
-                    {qr[0]: (er0, cr0), qr[1]: (er1, cr1), qr[2]: (er2, cr2)}
-
-                * encoded to logical virtual qubits:
-                    {(er0, cr0): qr[0], (er1, cr1): qr[1], (er2, cr2): qr[2]}
+            input_dict (dict): Mapping from logical qubits (Qubit) to dictionaries of registers.
         """
-        # NOTE: this super class relies on Layout.order_based_on_type
-        # which is overridden below
-        return super().from_dict(input_dict)
+        # return super().from_dict(input_dict)
+        for key, value in input_dict.items():
+            virtual, physical = EncodedLayout.order_based_on_type(key, value)
+            self._p2v[physical] = virtual
+            if virtual is None:
+                continue
+            self._v2p[virtual] = physical
+
+    def __setitem__(self, key, value):
+        """Set a mapping in the layout."""
+        virtual, physical = EncodedLayout.order_based_on_type(key, value)
+        self._set_type_checked_item(virtual, physical)
 
     @staticmethod
     def order_based_on_type(value1, value2):
-        """Decide which one is logical/encoded based on the type.
+        """Determine which value is k/v based on their types.
 
-        Returns (logical, encoded)
+        Returns:
+            EncodedRegisters: A EncodedRegisters object.
         """
-        if isinstance(value1, (Qubit, type(None))):
-            if (
-                isinstance(value2, tuple)
-                and len(value2) == 2
-                and isinstance(value2[0], QuantumRegister)
-                and isinstance(value2[1], ClassicalRegister)
-            ):
-                logical = value1
-                encoded = value2
-            else:
-                raise LayoutError(
-                    "Encoded value must be a tuple of (QuantumRegister, ClassicalRegister)"
-                )
-        elif isinstance(value2, (Qubit, type(None))):
-            if (
-                isinstance(value1, tuple)
-                and len(value1) == 2
-                and isinstance(value1[0], QuantumRegister)
-                and isinstance(value1[1], ClassicalRegister)
-            ):
-                logical = value2
-                encoded = value1
-            else:
-                raise LayoutError(
-                    "Encoded value must be a tuple of (QuantumRegister, ClassicalRegister)"
-                )
+        logical, encoded = None, None
+        if isinstance(value1, Qubit):
+            logical = value1
+            encoded = value2
+        elif isinstance(value2, Qubit):
+            logical = value2
+            encoded = value1
         else:
-            raise LayoutError(
-                "The map (%s -> %s) must be a (Qubit/tuple -> tuple/Qubit)"
-                " or the other way around." % (type(value1), type(value2))
-            )
+            raise LayoutError("One of the values must be a Qubit.")
+
+        if not isinstance(encoded, EncodedRegisters):
+            raise LayoutError("Encoded value must be a list.")
+
+        for reg in encoded:
+            if not (
+                isinstance(reg, QuantumRegister) or isinstance(reg, ClassicalRegister)
+            ):
+                raise LayoutError(
+                    "Encoded value must be a list of QuantumRegisters or ClassicalRegisters."
+                )
+
         return logical, encoded
 
     def __delitem__(self, key):
-        """Remove an element from the layout."""
-        # if isinstance(key, int):
-        #     del self._v2p[self._p2v[key]]
-        #     del self._p2v[key]
+        """Remove a mapping from the layout.
+
+        Args:
+            key (Qubit): The logical qubit whose mapping is to be removed.
+        """
         if isinstance(key, Qubit):
             del self._p2v[self._v2p[key]]
             del self._v2p[key]
         else:
-            raise LayoutError(
-                "The key to remove should be of the form"
-                " Qubit and %s was provided" % (type(key),)
-            )
+            raise LayoutError("The key to remove must be a Qubit.")
 
-    def add(self, logical_qubit, encoded_tuple=None):
-        """Add a map element between `logical_qubit` and `encoded_tuple`.
-
-        `encoded_tuple` is a pair of QuantumRegister and ClassicalRegister.
+    def add(
+        self,
+        logical_qubit,
+        codeword_register,
+        ancilla_register,
+        classical_codeword_register,
+        classical_ancilla_register,
+    ):
+        """Map a logical qubit to a set of encoded quantum/classical registers.
 
         Args:
             logical_qubit (Qubit): A logical qubit.
-            encoded_tuple (tuple): A tuple of (QuantumRegister, ClassicalRegister).
+            codeword_register (QuantumRegister): Quantum register for codeword qubits.
+            ancilla_register (QuantumRegister): Quantum register for ancilla qubits.
+            classical_codeword_register (ClassicalRegister): Classical register for codeword qubit measurements.
+            classical_ancilla_register (ClassicalRegister): Classical register for ancilla qubit measurements.
         """
-        if encoded_tuple is None:
-            raise ValueError(
-                "encoded_tuple must be provided and be a tuple of (QuantumRegister, ClassicalRegister)"
-            )
+        if not isinstance(logical_qubit, Qubit):
+            raise ValueError("Logical qubit must be a Qubit instance.")
 
-        if not (
-            isinstance(encoded_tuple, tuple)
-            and len(encoded_tuple) == 2
-            and isinstance(encoded_tuple[0], QuantumRegister)
-            and isinstance(encoded_tuple[1], ClassicalRegister)
-        ):
-            raise ValueError(
-                "encoded_tuple must be a tuple of (QuantumRegister, ClassicalRegister)"
-            )
+        encoded_registers = EncodedRegisters(
+            codeword_register,
+            ancilla_register,
+            classical_codeword_register,
+            classical_ancilla_register,
+        )
 
-        self[logical_qubit] = encoded_tuple
+        for reg in encoded_registers:
+            if not (
+                isinstance(reg, QuantumRegister) or isinstance(reg, ClassicalRegister)
+            ):
+                raise ValueError(
+                    f"{reg} must be a QuantumRegister or ClassicalRegister."
+                )
 
-    def add_register(self, quantum_reg, classical_reg):
-        """Add a map element between `quantum_reg` and `classical_reg`.
+        self[logical_qubit] = encoded_registers
 
-        Add mappings for each qubit in the quantum register to a
-        corresponding tuple of quantum and classical registers.
+    def get_logical_to_encoded_mapping(self):
+        """Get the mapping of logical qubits to encoded registers.
 
-        Args:
-            quantum_reg (QuantumRegister): A quantum register.
-            classical_reg (ClassicalRegister): A classical register, corresponding to `quantum_reg`.
+        Returns:
+            dict: A dictionary mapping logical qubits to their corresponding sets of encoded registers.
         """
-        raise NotImplementedError
-        # if len(quantum_reg) != len(classical_reg):
-        #     raise ValueError("Quantum and Classical registers must be of the same size")
+        return self._v2p
 
-        # for qubit, cbit in zip(quantum_reg, classical_reg):
-        #     self.add(qubit, (quantum_reg, classical_reg))
+    def get_encoded_to_logical_mapping(self):
+        """Get the mapping of encoded registers to logical qubits.
 
-    def get_logical_bits(self):
-        """Return the dictionary of mapping.
-
-        where the keys are (virtual) logical qubits and the values are
-        (virtual) encoded qubits.
+        Returns:
+            dict: A dictionary mapping sets of encoded registers to their corresponding logical qubits.
         """
-        return super().get_virtual_bits()
-
-    def get_encoded_bits(self):
-        """Return the dictionary of mapping.
-
-        where the keys are (virtual) encoded qubits and the values are
-        (virtual) logical qubits.
-        """
-        return super().get_physical_bits()
+        return self._p2v
