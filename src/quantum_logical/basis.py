@@ -11,13 +11,17 @@ signals leaving the codeword Hilbert space and is inspired by concepts from
 photonic quantum computing.
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 
 import numpy as np
-from qiskit.circuit.library import XGate, ZGate
+from qiskit import QuantumCircuit
+from qiskit.circuit.library import CXGate, HGate, IGate, XGate, ZGate
 from qutip import Qobj
 from qutip.states import basis
 from qutip.tensor import tensor
+
+from quantum_logical.operators import transform_ge_to_gf_gate
+from quantum_logical.qudit_op import QutritUnitary
 
 # zero = basis(2, 0)  # |0>
 # one = basis(2, 1)  # |1>
@@ -26,6 +30,13 @@ p_ge = (basis(2, 0) + basis(2, 1)).unit()  # |+_{ge}>
 m_ge = (basis(2, 0) - basis(2, 1)).unit()  # |-_{ge}>
 p_gf = (basis(3, 0) + basis(3, 2)).unit()  # |+_{gf}>
 m_gf = (basis(3, 0) - basis(3, 2)).unit()  # |-_{gf}>
+
+x_gf = transform_ge_to_gf_gate(XGate().to_matrix())
+x_gf = QutritUnitary(x_gf, "x_gf")
+cx_gf = transform_ge_to_gf_gate(CXGate().to_matrix())
+cx_gf = QutritUnitary(cx_gf, "cx_gf")
+h_gf = transform_ge_to_gf_gate(HGate().to_matrix())
+h_gf = QutritUnitary(h_gf, "h_gf")
 
 
 class QuantumErrorCorrectionCode(ABC):
@@ -36,7 +47,7 @@ class QuantumErrorCorrectionCode(ABC):
     codes.
     """
 
-    code_length: int = None
+    code_length: int = None  # Number of qubits that define the codewords
     num_ancilla: int = None
     stabilizers: list = None
 
@@ -115,13 +126,9 @@ class QuantumErrorCorrectionCode(ABC):
         qc.h(ancilla_register)
         for i, stabilizer in enumerate(self.stabilizer_generators):
             for j, pauli_op in enumerate(stabilizer):
-                if pauli_op == "I":
+                if isinstance(pauli_op, IGate):
                     continue
-                elif pauli_op == "X":
-                    qc.cx(ancilla_register[i], code_register[j])
-                elif pauli_op == "Z":
-                    qc.cz(ancilla_register[i], code_register[j])
-
+                qc.append(pauli_op.control(1), [ancilla_register[i], code_register[j]])
         qc.h(ancilla_register)
 
         qc.barrier()
@@ -135,6 +142,48 @@ class QuantumErrorCorrectionCode(ABC):
 
         qc.barrier()
 
+        return qc
+
+    @abstractmethod
+    def _encode_subroutine(self):
+        """Encode the given state qubits into the encoded state.
+
+        Returns:
+            QuantumCircuit: The encoding circuit.
+        """
+        raise NotImplementedError
+
+    def encoding_circuit(self, qc, state_qubits):
+        """Modify the given quantum circuit by adding the encoding circuit.
+
+        Args:
+            qc (QuantumCircuit): The quantum circuit to modify.
+            state_qubits (QuantumRegister): The quantum register containing the state qubits.
+        """
+        if len(state_qubits) != self.code_length:
+            raise ValueError(
+                f"Number of state qubits ({len(state_qubits)}) must match code length ({self.code_length})."
+            )
+        qc.compose(self._encode_subroutine(), qubits=state_qubits, inplace=True)
+        return qc
+
+    # TODO: QuantumCircuit.inverse() will not work for QutritUnitary gates
+    # this is because rather than just playing the gate in reverse, it
+    #  actually computes the adjoints...
+    def decoding_circuit(self, qc, state_qubits):
+        """Modify the given quantum circuit by adding the decoding circuit.
+
+        Args:
+            qc (QuantumCircuit): The quantum circuit to modify.
+            state_qubits (QuantumRegister): The quantum register containing the encoded state qubits.
+        """
+        if len(state_qubits) != self.code_length:
+            raise ValueError(
+                f"Number of state qubits ({len(state_qubits)}) must match code length ({self.code_length})."
+            )
+        qc = qc.compose(
+            self._encode_subroutine().inverse(), qubits=state_qubits, inplace=True
+        )
         return qc
 
 
@@ -156,71 +205,76 @@ class RepetitionEncoding(QuantumErrorCorrectionCode):
         self.phase_flip = phase_flip
         self.stabilizer_generators = []
 
-        # Define logical states based on the type of code
+        # Define encoded states based on the type of code
         if phase_flip:
-            logical0 = tensor([basis(2, 0) + basis(2, 1)] * self.code_length)  # |+++>
-            logical1 = tensor([basis(2, 0) - basis(2, 1)] * self.code_length)  # |--->
+            encoded0 = tensor([basis(2, 0) + basis(2, 1)] * self.code_length)  # |+++>
+            encoded1 = tensor([basis(2, 0) - basis(2, 1)] * self.code_length)  # |--->
 
-            self.stabilizer_generators.append(["X", "X", "I"])
-            self.stabilizer_generators.append(["I", "X", "X"])
+            self.stabilizer_generators.append([XGate(), XGate(), IGate()])
+            self.stabilizer_generators.append([IGate(), XGate(), XGate()])
 
         else:
-            logical0 = tensor([basis(2, 0)] * self.code_length)  # |000>
-            logical1 = tensor([basis(2, 1)] * self.code_length)  # |111>
+            encoded0 = tensor([basis(2, 0)] * self.code_length)  # |000>
+            encoded1 = tensor([basis(2, 1)] * self.code_length)  # |111>
 
-            self.stabilizer_generators.append(["Z", "Z", "I"])
-            self.stabilizer_generators.append(["I", "Z", "Z"])
+            self.stabilizer_generators.append([ZGate(), ZGate(), IGate()])
+            self.stabilizer_generators.append([IGate(), ZGate(), ZGate()])
 
-        self.logical_zero = logical0.unit()
-        self.logical_one = logical1.unit()
+        encoded_zero = encoded0.unit()
+        encoded_one = encoded1.unit()
 
-        super().__init__(self.logical_zero, self.logical_one)
+        super().__init__(encoded_zero, encoded_one)
 
-    def encoding_circuit(self, qc, state_qubits):
-        """Modify the given quantum circuit by adding the encoding circuit.
-
-        Args:
-            qc (QuantumCircuit): The quantum circuit to modify.
-            state_qubits (QuantumRegister): The quantum register containing the state qubits.
-        """
-        if len(state_qubits) != self.code_length:
-            raise ValueError(
-                f"Number of state qubits ({len(state_qubits)}) must match code length ({self.code_length})."
-            )
+    def _encode_subroutine(self):
+        temp = QuantumCircuit(self.code_length)
 
         # Entangle qubits using CNOT gates
         for i in range(1, self.code_length):
-            qc.cx(state_qubits[0], state_qubits[i])
+            temp.cx(0, i)
 
         # For phase-flip code, apply Hadamard gates to each qubit
         if self.phase_flip:
             for i in range(self.code_length):
-                qc.h(state_qubits[i])
+                temp.h(i)
 
-        return qc
+        return temp
 
-    def decoding_circuit(self, qc, state_qubits):
-        """Modify the given quantum circuit by adding the decoding circuit.
 
-        Args:
-            qc (QuantumCircuit): The quantum circuit to modify.
-            state_qubits (QuantumRegister): The quantum register containing the encoded state qubits.
-        """
-        if len(state_qubits) != self.code_length:
-            raise ValueError(
-                f"Number of state qubits ({len(state_qubits)}) must match code length ({self.code_length})."
-            )
+class QutritPhaseRepetitionCode(QuantumErrorCorrectionCode):
+    """SNAIL concatenated erasure encoding with error ancillas.
 
-        # For phase-flip code, reverse the Hadamard gates
-        if self.phase_flip:
-            for i in range(self.code_length):
-                qc.h(state_qubits[i])
+    The logical basis is defined as:
+        |L_0> = |g+f, g+f, g+f>
+        |L_1> = |g-f, g-f, g-f>
+    """
 
-        # Reverse the entanglement using CNOT gates
+    code_length = 3
+    num_ancilla = 2
+    phase_flip = True
+
+    def __init__(self):
+        """Initialize a concatenated SNAIL encoding."""
+        logical0 = tensor(p_gf, p_gf, p_gf).unit()
+        logical1 = tensor(m_gf, m_gf, m_gf).unit()
+
+        self.stabilizer_generators = []
+        self.stabilizer_generators.append([x_gf, x_gf, IGate()])
+        self.stabilizer_generators.append([IGate(), x_gf, x_gf])
+
+        super().__init__(logical0, logical1)
+
+    def _encode_subroutine(self):
+        temp = QuantumCircuit(self.code_length)
+
+        # Entangle qubits using CNOT gates
         for i in range(1, self.code_length):
-            qc.cx(state_qubits[0], state_qubits[i])
+            temp.append(cx_gf, [0, i])
 
-        return qc
+        # For phase-flip code, apply Hadamard gates to each qubit
+        for i in range(self.code_length):
+            temp.append(h_gf, [i])
+
+        return temp
 
 
 # class PhaseReptition(LogicalEncoding):
