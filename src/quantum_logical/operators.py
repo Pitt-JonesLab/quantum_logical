@@ -31,7 +31,7 @@ def transform_ge_to_gf_gate(gate):
       operations for states involving |e>.
     - The resulting gate G' is unitary and acts as an identity operation on the |e> state.
 
-    Parameters:
+    Args:
     - gate: A qubit gate represented as a qutip Qobj (2x2 for 1Q, 4x4 for 2Q).
 
     Returns:
