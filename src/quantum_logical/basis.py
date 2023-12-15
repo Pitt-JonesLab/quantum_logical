@@ -144,6 +144,7 @@ class QuantumErrorCorrectionCode(ABC):
 
         return qc
 
+    # TODO: can this be automated, given we know the codeword basis?
     @abstractmethod
     def _encode_subroutine(self):
         """Encode the given state qubits into the encoded state.
