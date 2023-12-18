@@ -8,7 +8,14 @@ to have logical qubits point to both a quantum register and a classical
 register (where the syndrome measurements take place).
 """
 from qiskit import ClassicalRegister, QuantumRegister
-from qiskit.circuit import Qubit
+from qiskit.circuit import CircuitError, EquivalenceLibrary, Qubit
+from qiskit.circuit.equivalence import (
+    EdgeData,
+    Equivalence,
+    Key,
+    NodeData,
+    _raise_if_param_mismatch,
+)
 from qiskit.transpiler.exceptions import LayoutError
 from qiskit.transpiler.layout import Layout
 
@@ -189,3 +196,131 @@ class EncodedLayout(Layout):
             dict: A dictionary mapping sets of encoded registers to their corresponding logical qubits.
         """
         return self._p2v
+
+
+class EncodedEquivalenceLibrary(EquivalenceLibrary):
+    """Subclass of EquivalenceLibrary with a modified shape mismatch check.
+
+    This class is specifically designed for scenarios where gates are mapped to
+    encoded circuits with a different number of qubits. The standard shape mismatch
+    check in EquivalenceLibrary is overridden to accommodate the encoding process,
+    where the number of qubits in the equivalent circuit is a multiple of the number
+    of qubits in the gate, based on the code_length.
+
+    The `set_entry` and `add_equivalence` methods are overridden to replace the
+    standard shape mismatch check with the custom one defined in this class.
+    """
+
+    def __init__(self, code_length):
+        """Initialize the library with a specific code length.
+
+        Args:
+            code_length (int): The code length to be used for shape mismatch checks.
+        """
+        super().__init__()
+        self.code_length = code_length
+        # TODO: Considerations for clbits can be added here if necessary.
+
+    def custom_shape_mismatch_function(self, gate, circuit):
+        """Check the shape mismatch between gate and circuit.
+
+        Custom function to check the shape mismatch between a gate and a
+        circuit based on the encoding scheme.
+
+        Args:
+            gate: The gate to be checked.
+            circuit: The circuit to be checked.
+
+        Raises:
+            CircuitError: If the number of qubits in the gate times the code_length
+                          does not equal the number of qubits in the circuit, or
+                          if the number of clbits does not match.
+        """
+        if (
+            self.code_length * gate.num_qubits != circuit.num_qubits
+            or gate.num_clbits != circuit.num_clbits
+        ):
+            raise CircuitError(
+                "Cannot add equivalence between circuit and gate "
+                "of different shapes. Gate: {} qubits and {} clbits. "
+                "Circuit: {} qubits and {} clbits.".format(
+                    gate.num_qubits,
+                    gate.num_clbits,
+                    circuit.num_qubits,
+                    circuit.num_clbits,
+                )
+            )
+
+    def set_entry(self, gate, entry):
+        """Set the equivalence record for a Gate.
+
+        Future queries for the Gate will return only the circuits provided.
+
+        Parameterized Gates (those including `qiskit.circuit.Parameters` in their
+        `Gate.params`) can be marked equivalent to parameterized circuits,
+        provided the parameters match.
+
+        Args:
+            gate (Gate): A Gate instance.
+            entry (List['QuantumCircuit']) : A list of QuantumCircuits, each
+                equivalently implementing the given Gate.
+        """
+        for equiv in entry:
+            # _raise_if_shape_mismatch(gate, equiv)
+            self.custom_shape_mismatch_function(gate, equiv)
+            _raise_if_param_mismatch(gate.params, equiv.parameters)
+
+        key = Key(name=gate.name, num_qubits=gate.num_qubits)
+        equivs = [
+            Equivalence(params=gate.params.copy(), circuit=equiv.copy())
+            for equiv in entry
+        ]
+
+        self._graph[self._set_default_node(key)] = NodeData(key=key, equivs=equivs)
+
+    def add_equivalence(self, gate, equivalent_circuit):
+        """Add a new equivalence to the library.
+
+        Future queries for the Gate will include the given circuit, in addition to all
+        existing equivalences (including those from base).
+
+        Parameterized Gates (those including `qiskit.circuit.Parameters` in their
+        `Gate.params`) can be marked equivalent to parameterized circuits,
+        provided the parameters match.
+
+        Args:
+            gate (Gate): A Gate instance.
+            equivalent_circuit (QuantumCircuit): A circuit equivalently
+                implementing the given Gate.
+        """
+        # _raise_if_shape_mismatch(gate, equivalent_circuit)
+        self.custom_shape_mismatch_function(gate, equivalent_circuit)
+        _raise_if_param_mismatch(gate.params, equivalent_circuit.parameters)
+
+        key = Key(name=gate.name, num_qubits=gate.num_qubits)
+        equiv = Equivalence(
+            params=gate.params.copy(), circuit=equivalent_circuit.copy()
+        )
+
+        target = self._set_default_node(key)
+        self._graph[target].equivs.append(equiv)
+
+        sources = {
+            Key(name=instruction.operation.name, num_qubits=len(instruction.qubits))
+            for instruction in equivalent_circuit
+        }
+        edges = [
+            (
+                self._set_default_node(source),
+                target,
+                EdgeData(
+                    index=self._rule_count,
+                    num_gates=len(sources),
+                    rule=equiv,
+                    source=source,
+                ),
+            )
+            for source in sources
+        ]
+        self._graph.add_edges_from(edges)
+        self._rule_count += 1
