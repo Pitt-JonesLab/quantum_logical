@@ -122,27 +122,39 @@ class QuantumErrorCorrectionCode(ABC):
             ancilla_qubits (QuantumRegister): The quantum register containing the ancilla qubits.
             ancilla_classical_register (ClassicalRegister): The classical register for syndrome measurement.
         """
+        # Extract the syndrome
+        self.extract_syndrome(qc, code_register, ancilla_register)
+
+        # Perform stabilizer measurements
+        self.measure_syndrome(
+            qc, code_register, ancilla_register, ancilla_classical_register
+        )
+
+        return qc
+
+    def extract_syndrome(self, qc, code_register, ancilla_register):
+        """Extract the syndrome for error correction."""
         qc.reset(ancilla_register)
         qc.h(ancilla_register)
         for i, stabilizer in enumerate(self.stabilizer_generators):
             for j, pauli_op in enumerate(stabilizer):
-                if isinstance(pauli_op, IGate):
-                    continue
-                qc.append(pauli_op.control(1), [ancilla_register[i], code_register[j]])
+                if pauli_op != IGate():
+                    qc.append(
+                        pauli_op.control(1), [ancilla_register[i], code_register[j]]
+                    )
         qc.h(ancilla_register)
 
-        # qc.barrier()
+    def measure_syndrome(
+        self, qc, code_register, ancilla_register, ancilla_classical_register
+    ):
+        """Perform measurements for the stabilizers and apply corrections."""
         qc.measure(ancilla_register, ancilla_classical_register)
 
-        # Implement classically conditioned corrections
+        # TODO: Implement classically conditioned corrections
         correction_gate = ZGate() if self.phase_flip else XGate()
         for i in range(self.code_length):
             with qc.if_test((ancilla_classical_register, i + 1)):
                 qc.append(correction_gate, [code_register[i]])
-
-        # qc.barrier()
-
-        return qc
 
     # TODO: can this be automated, given we know the codeword basis?
     @abstractmethod

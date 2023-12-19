@@ -7,7 +7,7 @@ logical qubit 0 is now encoded qubits [0,1,2]. we might find it useful
 to have logical qubits point to both a quantum register and a classical
 register (where the syndrome measurements take place).
 """
-from qiskit import ClassicalRegister, QuantumRegister
+from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister
 from qiskit.circuit import CircuitError, EquivalenceLibrary, Qubit
 from qiskit.circuit.equivalence import (
     EdgeData,
@@ -16,7 +16,9 @@ from qiskit.circuit.equivalence import (
     NodeData,
     _raise_if_param_mismatch,
 )
-from qiskit.transpiler.exceptions import LayoutError
+from qiskit.converters import circuit_to_dag
+from qiskit.transpiler.basepasses import TransformationPass
+from qiskit.transpiler.exceptions import LayoutError, TranspilerError
 from qiskit.transpiler.layout import Layout
 
 
@@ -324,3 +326,165 @@ class EncodedEquivalenceLibrary(EquivalenceLibrary):
         ]
         self._graph.add_edges_from(edges)
         self._rule_count += 1
+
+
+class EncodedCircuitExpansionPass(TransformationPass):
+    """Expansion pass for encoded circuits.
+
+    Transformation pass to expand a logical circuit into an encoded
+    circuit with interleaved stabilizer measurements.
+    """
+
+    def __init__(
+        self, encoding, equiv_lib=None, target_basis=None, stabilizer_interval=100
+    ):
+        """Initialize the EncodedCircuitExpansionPass.
+
+        Args:
+            encoding: The encoding scheme to be used.
+            equiv_lib: Equivalence library for the encoding.
+            target_basis: Target basis gates for the encoding.
+            stabilizer_interval: Interval (in terms of quantum gate duration) to insert stabilizer measurements.
+        """
+        # TODO
+        # self.equivalence_library = self.encoding.get_equivalence_library()
+        # self.target_basis = self.encoding.get_supported_basis_gates()
+        super().__init__()
+        self.encoding = encoding
+        self.equivalence_library = equiv_lib
+        self.target_basis = target_basis  # physical gates
+        self.stabilizer_interval = stabilizer_interval
+        self.logical_encoded_layout = EncodedLayout()
+        self.registers = []
+
+    def run(self, dag):
+        """Run the transformation pass on a directed acyclic graph (DAG).
+
+        Args:
+            dag: Directed acyclic graph (DAG) representation of a quantum circuit.
+
+        Returns:
+            Transformed DAG with encoded circuit.
+        """
+        self._initialize_registers(dag)
+        temp_qc = QuantumCircuit(*self.registers)
+
+        self._apply_encoding_circuit(dag, temp_qc)
+
+        self._place_logical_gates_with_stabilizers(dag, temp_qc)
+
+        self._apply_decoding_and_measurement(dag, temp_qc)
+
+        return circuit_to_dag(temp_qc)
+
+    def _initialize_registers(self, dag):
+        """Initialize registers for each logical qubit in the DAG."""
+        encoding_codeword_len = self.encoding.code_length
+        encoding_ancilla_len = self.encoding.num_ancilla
+
+        for logical_qubit in dag.qubits:
+            qr = QuantumRegister(encoding_codeword_len)
+            ar = QuantumRegister(encoding_ancilla_len)
+            cqr = ClassicalRegister(encoding_codeword_len)
+            car = ClassicalRegister(encoding_ancilla_len)
+            self.registers.extend([qr, ar, cqr, car])
+            self.logical_encoded_layout.add(logical_qubit, qr, ar, cqr, car)
+
+    def _apply_encoding_circuit(self, dag, temp_qc):
+        """Apply the encoding circuit to each logical qubit."""
+        for logical_qubit in dag.qubits:
+            regs = self.logical_encoded_layout.get_logical_to_encoded_mapping()[
+                logical_qubit
+            ]
+            self.encoding.encoding_circuit(temp_qc, regs.codeword_register)
+        temp_qc.barrier()
+
+    def _place_logical_gates_with_stabilizers(self, dag, temp_qc):
+        """Place logical gates alternating with stabilizer measurements.
+
+        Args:
+            dag: DAG representation of the quantum circuit.
+            temp_qc: Temporary QuantumCircuit being constructed.
+
+        TODO:
+        - Expand the circuit and schedule it to get a more well-defined sense of durations.
+        - After scheduling, revisit the circuit to insert stabilizers at appropriate intervals.
+        This will ensure stabilizers are inserted based on the actual timing of the operations.
+        """
+        current_duration = 0
+        for layer in dag.layers():
+            layer_duration = 0
+
+            for logical_op in layer["graph"].op_nodes():
+                # TODO: how do we handle parametric gates?
+                # see qiskit.transpiler.passes.basis.basis_translator
+                try:
+                    encoded_op = self.equivalence_library.get_entry(logical_op.op)[0]
+                except IndexError:
+                    raise TranspilerError(
+                        f"Could not find equivalence for {logical_op.op}."
+                    )
+
+                encoded_qargs = [
+                    self.logical_encoded_layout.get_logical_to_encoded_mapping()[
+                        qarg
+                    ].codeword_register
+                    for qarg in logical_op.qargs
+                ]
+                qarg_qubits = sum([q._bits for q in encoded_qargs], [])
+                temp_qc.compose(encoded_op, qubits=qarg_qubits, inplace=True)
+
+                # Add a default duration if it's not defined
+                op_duration = (
+                    encoded_op.duration if encoded_op.duration is not None else 50
+                )
+                layer_duration = max(layer_duration, op_duration)
+
+            current_duration += layer_duration
+
+            # Check if the accumulated duration exceeds the interval and apply stabilizer if it does
+            if current_duration >= self.stabilizer_interval:
+                temp_qc.barrier()
+                self._apply_stabilizer(temp_qc)
+                current_duration = 0
+
+    def _apply_stabilizer(self, temp_qc):
+        """Apply stabilizer measurements to the circuit."""
+        for (
+            logical_qubit
+        ) in self.logical_encoded_layout.get_logical_to_encoded_mapping().values():
+            # self.encoding.stabilizer_subroutine(
+            #     temp_qc,
+            #     logical_qubit.codeword_register,
+            #     logical_qubit.ancilla_register,
+            #     logical_qubit.classical_ancilla_register,
+            # )
+            self.encoding.extract_syndrome(
+                temp_qc, logical_qubit.codeword_register, logical_qubit.ancilla_register
+            )
+        temp_qc.barrier()
+
+        for (
+            logical_qubit
+        ) in self.logical_encoded_layout.get_logical_to_encoded_mapping().values():
+            self.encoding.measure_syndrome(
+                temp_qc,
+                logical_qubit.codeword_register,
+                logical_qubit.ancilla_register,
+                logical_qubit.classical_ancilla_register,
+            )
+        temp_qc.barrier()
+
+    def _apply_decoding_and_measurement(self, dag, temp_qc):
+        """Apply decoding and perform measurements on each logical qubit."""
+        for logical_qubit in dag.qubits:
+            regs = self.logical_encoded_layout.get_logical_to_encoded_mapping()[
+                logical_qubit
+            ]
+            self.encoding.decoding_circuit(temp_qc, regs.codeword_register)
+        temp_qc.barrier()
+        for logical_qubit in dag.qubits:
+            regs = self.logical_encoded_layout.get_logical_to_encoded_mapping()[
+                logical_qubit
+            ]
+            temp_qc.measure(regs.codeword_register, regs.classical_codeword_register)
