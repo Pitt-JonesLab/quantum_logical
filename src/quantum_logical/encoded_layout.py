@@ -38,16 +38,30 @@ class EncodedRegisters:
         self.classical_codeword_register = classical_codeword_register
         self.classical_ancilla_register = classical_ancilla_register
 
-    def __iter__(self):
-        """Define list of registers to iterate over."""
-        return iter(
-            [
-                self.codeword_register,
-                self.ancilla_register,
-                self.classical_codeword_register,
-                self.classical_ancilla_register,
-            ]
+    @classmethod
+    def from_num_qubits_ancilla(cls, num_qubits, num_ancilla):
+        """Instantiate EncodedRegisters given number of qubits/ancilla."""
+        if num_qubits is None or num_ancilla is None:
+            raise ValueError("num_qubits and num_ancilla must be specified.")
+
+        codeword_register = QuantumRegister(num_qubits)
+        ancilla_register = QuantumRegister(num_ancilla)
+        classical_codeword_register = ClassicalRegister(num_qubits)
+        classical_ancilla_register = ClassicalRegister(num_ancilla)
+
+        return cls(
+            codeword_register,
+            ancilla_register,
+            classical_codeword_register,
+            classical_ancilla_register,
         )
+
+    def __iter__(self):
+        """Yield each register for unpacking."""
+        yield self.codeword_register
+        yield self.ancilla_register
+        yield self.classical_codeword_register
+        yield self.classical_ancilla_register
 
     def __hash__(self):
         """Define hash function."""
@@ -328,7 +342,7 @@ class EncodedEquivalenceLibrary(EquivalenceLibrary):
         self._rule_count += 1
 
 
-class EncodedCircuitExpansionPass(TransformationPass):
+class LogicalEncodingTransform(TransformationPass):
     """Expansion pass for encoded circuits.
 
     Transformation pass to expand a logical circuit into an encoded
@@ -338,7 +352,7 @@ class EncodedCircuitExpansionPass(TransformationPass):
     def __init__(
         self, encoding, equiv_lib=None, target_basis=None, stabilizer_interval=100
     ):
-        """Initialize the EncodedCircuitExpansionPass.
+        """Initialize the LogicalEncodingTransform.
 
         Args:
             encoding: The encoding scheme to be used.
@@ -383,10 +397,10 @@ class EncodedCircuitExpansionPass(TransformationPass):
         encoding_ancilla_len = self.encoding.num_ancilla
 
         for logical_qubit in dag.qubits:
-            qr = QuantumRegister(encoding_codeword_len)
-            ar = QuantumRegister(encoding_ancilla_len)
-            cqr = ClassicalRegister(encoding_codeword_len)
-            car = ClassicalRegister(encoding_ancilla_len)
+            qreg = EncodedRegisters.from_num_qubits_ancilla(
+                encoding_codeword_len, encoding_ancilla_len
+            )
+            qr, ar, cqr, car = qreg
             self.registers.extend([qr, ar, cqr, car])
             self.logical_encoded_layout.add(logical_qubit, qr, ar, cqr, car)
 
@@ -396,7 +410,7 @@ class EncodedCircuitExpansionPass(TransformationPass):
             regs = self.logical_encoded_layout.get_logical_to_encoded_mapping()[
                 logical_qubit
             ]
-            self.encoding.encoding_circuit(temp_qc, regs.codeword_register)
+            self.encoding.encoding_circuit(temp_qc, regs)
         temp_qc.barrier()
 
     def _place_logical_gates_with_stabilizers(self, dag, temp_qc):
@@ -451,28 +465,15 @@ class EncodedCircuitExpansionPass(TransformationPass):
     def _apply_stabilizer(self, temp_qc):
         """Apply stabilizer measurements to the circuit."""
         for (
-            logical_qubit
+            logical_qubit_regs
         ) in self.logical_encoded_layout.get_logical_to_encoded_mapping().values():
-            # self.encoding.stabilizer_subroutine(
-            #     temp_qc,
-            #     logical_qubit.codeword_register,
-            #     logical_qubit.ancilla_register,
-            #     logical_qubit.classical_ancilla_register,
-            # )
-            self.encoding.extract_syndrome(
-                temp_qc, logical_qubit.codeword_register, logical_qubit.ancilla_register
-            )
+            self.encoding.extract_syndrome(temp_qc, logical_qubit_regs)
         temp_qc.barrier()
 
         for (
-            logical_qubit
+            logical_qubit_regs
         ) in self.logical_encoded_layout.get_logical_to_encoded_mapping().values():
-            self.encoding.measure_syndrome(
-                temp_qc,
-                logical_qubit.codeword_register,
-                logical_qubit.ancilla_register,
-                logical_qubit.classical_ancilla_register,
-            )
+            self.encoding.measure_syndrome(temp_qc, logical_qubit_regs)
         temp_qc.barrier()
 
     def _apply_decoding_and_measurement(self, dag, temp_qc):
@@ -481,7 +482,7 @@ class EncodedCircuitExpansionPass(TransformationPass):
             regs = self.logical_encoded_layout.get_logical_to_encoded_mapping()[
                 logical_qubit
             ]
-            self.encoding.decoding_circuit(temp_qc, regs.codeword_register)
+            self.encoding.decoding_circuit(temp_qc, regs)
         temp_qc.barrier()
         for logical_qubit in dag.qubits:
             regs = self.logical_encoded_layout.get_logical_to_encoded_mapping()[
