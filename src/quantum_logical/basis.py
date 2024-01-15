@@ -20,6 +20,7 @@ from qutip import Qobj
 from qutip.states import basis
 from qutip.tensor import tensor
 
+from quantum_logical.encoded_layout import EncodedRegisters
 from quantum_logical.operators import transform_ge_to_gf_gate
 from quantum_logical.qudit_op import QutritUnitary
 
@@ -49,7 +50,7 @@ class QuantumErrorCorrectionCode(ABC):
 
     code_length: int = None  # Number of qubits that define the codewords
     num_ancilla: int = None
-    stabilizers: list = None
+    stabilizer_generators: list = None
 
     def __init__(self, encoded_zero_ket: Qobj, encoded_one_ket: Qobj):
         """Initialize the logical encoding with encoded basis states.
@@ -108,53 +109,48 @@ class QuantumErrorCorrectionCode(ABC):
             + self.encoded_one_ket * self.encoded_one_ket.dag()
         )
 
-    def stabilizer_subroutine(
-        self, qc, code_register, ancilla_register, ancilla_classical_register
-    ):
-        """Insert the stabilizer subroutine into the given quantum circuit.
-
-        Modifies the given quantum circuit by adding the stabilizer
-        subroutine, including syndrome extraction and correction.
+    def stabilizer_subroutine(self, qc: QuantumCircuit, qreg: EncodedRegisters):
+        """Insert stabilizer subroutine into quantum circuit.
 
         Args:
-            qc (QuantumCircuit): The quantum circuit to modify.
-            code_register (QuantumRegister): The quantum register containing the state qubits.
-            ancilla_qubits (QuantumRegister): The quantum register containing the ancilla qubits.
-            ancilla_classical_register (ClassicalRegister): The classical register for syndrome measurement.
+            qc (QuantumCircuit): Quantum circuit to modify.
+            qreg (EncodedRegisters): Quantum registers with codeword and ancilla qubits.
         """
-        # Extract the syndrome
-        self.extract_syndrome(qc, code_register, ancilla_register)
-
-        # Perform stabilizer measurements
-        self.measure_syndrome(
-            qc, code_register, ancilla_register, ancilla_classical_register
-        )
-
+        self.extract_syndrome(qc, qreg)
+        self.measure_syndrome(qc, qreg)
         return qc
 
-    def extract_syndrome(self, qc, code_register, ancilla_register):
-        """Extract the syndrome for error correction."""
-        qc.reset(ancilla_register)
-        qc.h(ancilla_register)
+    def extract_syndrome(self, qc: QuantumCircuit, qreg: EncodedRegisters):
+        """Extract syndrome for error correction.
+
+        Args:
+            qc (QuantumCircuit): Quantum circuit to modify.
+            qreg (EncodedRegisters): Quantum registers with codeword and ancilla qubits.
+        """
+        qc.reset(qreg.ancilla_register)
+        qc.h(qreg.ancilla_register)
         for i, stabilizer in enumerate(self.stabilizer_generators):
             for j, pauli_op in enumerate(stabilizer):
                 if pauli_op != IGate():
                     qc.append(
-                        pauli_op.control(1), [ancilla_register[i], code_register[j]]
+                        pauli_op.control(1),
+                        [qreg.ancilla_register[i], qreg.codeword_register[j]],
                     )
-        qc.h(ancilla_register)
+        qc.h(qreg.ancilla_register)
 
-    def measure_syndrome(
-        self, qc, code_register, ancilla_register, ancilla_classical_register
-    ):
-        """Perform measurements for the stabilizers and apply corrections."""
-        qc.measure(ancilla_register, ancilla_classical_register)
+    def measure_syndrome(self, qc: QuantumCircuit, qreg: EncodedRegisters):
+        """Perform measurements for stabilizers and apply corrections.
 
-        # TODO: Implement classically conditioned corrections
+        Args:
+            qc (QuantumCircuit): Quantum circuit to modify.
+            qreg (EncodedRegisters): Quantum registers with codeword and ancilla qubits.
+        """
+        qc.measure(qreg.ancilla_register, qreg.classical_ancilla_register)
+
         correction_gate = ZGate() if self.phase_flip else XGate()
         for i in range(self.code_length):
-            with qc.if_test((ancilla_classical_register, i + 1)):
-                qc.append(correction_gate, [code_register[i]])
+            with qc.if_test((qreg.classical_ancilla_register, i + 1)):
+                qc.append(correction_gate, [qreg.codeword_register[i]])
 
     # TODO: can this be automated, given we know the codeword basis?
     @abstractmethod
@@ -166,36 +162,38 @@ class QuantumErrorCorrectionCode(ABC):
         """
         raise NotImplementedError
 
-    def encoding_circuit(self, qc, state_qubits):
-        """Modify the given quantum circuit by adding the encoding circuit.
+    def encoding_circuit(self, qc: QuantumCircuit, qreg: EncodedRegisters):
+        """Add encoding circuit to quantum circuit.
 
         Args:
-            qc (QuantumCircuit): The quantum circuit to modify.
-            state_qubits (QuantumRegister): The quantum register containing the state qubits.
+            qc (QuantumCircuit): Quantum circuit to modify.
+            qreg (EncodedRegisters): Quantum registers with state qubits.
         """
-        if len(state_qubits) != self.code_length:
-            raise ValueError(
-                f"Number of state qubits ({len(state_qubits)}) must match code length ({self.code_length})."
-            )
-        qc.compose(self._encode_subroutine(), qubits=state_qubits, inplace=True)
+        if len(qreg.codeword_register) != self.code_length:
+            raise ValueError("Number of state qubits must match code length.")
+
+        qc.compose(
+            self._encode_subroutine(), qubits=qreg.codeword_register, inplace=True
+        )
         return qc
 
     # TODO: QuantumCircuit.inverse() will not work for QutritUnitary gates
     # this is because rather than just playing the gate in reverse, it
     #  actually computes the adjoints...
-    def decoding_circuit(self, qc, state_qubits):
-        """Modify the given quantum circuit by adding the decoding circuit.
+    def decoding_circuit(self, qc: QuantumCircuit, qreg: EncodedRegisters):
+        """Add decoding circuit to quantum circuit.
 
         Args:
-            qc (QuantumCircuit): The quantum circuit to modify.
-            state_qubits (QuantumRegister): The quantum register containing the encoded state qubits.
+            qc (QuantumCircuit): Quantum circuit to modify.
+            qreg (EncodedRegisters): Quantum registers with encoded state qubits.
         """
-        if len(state_qubits) != self.code_length:
-            raise ValueError(
-                f"Number of state qubits ({len(state_qubits)}) must match code length ({self.code_length})."
-            )
+        if len(qreg.codeword_register) != self.code_length:
+            raise ValueError("Number of state qubits must match code length.")
+
         qc.compose(
-            self._encode_subroutine().inverse(), qubits=state_qubits, inplace=True
+            self._encode_subroutine().inverse(),
+            qubits=qreg.codeword_register,
+            inplace=True,
         )
         return qc
 
