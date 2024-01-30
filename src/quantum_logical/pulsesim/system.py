@@ -123,13 +123,13 @@ class QuantumSystem:
 
         # Process couplings
         couplings = {}
-        for k, coupling in data["couplings"].items():
+        for _, coupling in data["couplings"].items():
             mode_names = coupling["modes"]
             mode_objs = [
                 next(mode for mode in modes if mode.name == name) for name in mode_names
             ]
-            couplings[tuple(mode_objs)] = (
-                coupling["g2"] * 2 * np.pi
-            )  # Convert g2 from GHz to rad/s
+
+            # Convert g2 from GHz to rad/s
+            couplings[tuple(mode_objs)] = coupling["g2"] * 2 * np.pi
 
         return cls(modes, couplings)

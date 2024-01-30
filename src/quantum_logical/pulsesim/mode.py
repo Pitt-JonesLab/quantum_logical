@@ -10,6 +10,7 @@ class QuantumMode(ABC):
     """Class representing a single mode in a quantum system."""
 
     def __new__(cls, **kwargs):
+        """Create a new QuantumMode instance of the appropriate subclass."""
         mode_type = kwargs["mode_type"]
         if cls is QuantumMode:
             if mode_type == "Qubit":
@@ -71,13 +72,15 @@ class QuantumMode(ABC):
 
 
 class QubitMode(QuantumMode):
+    """Class representing a single Qubit mode in a quantum system."""
+
     def __init__(self, **kwargs):
+        """Initialize a QubitMode instance representing a single Qubit mode."""
         super().__init__(**kwargs)
         self.alpha = kwargs["alpha"] * 2 * np.pi  # Convert alpha from GHz to rad/s
 
     def H_0(self, system=None, **kwargs):
-        """Calculate the Hamiltonian for a Qubit mode, with options for
-        specific approximations.
+        """Calculate the Hamiltonian for a Qubit mode, with optional RWA/TLS.
 
         Args:
             system (QuantumSystem, optional): The quantum system to which the mode belongs.
@@ -101,11 +104,14 @@ class QubitMode(QuantumMode):
             alpha_term = self.alpha / 2 * a_dag * a_dag * a * a
             return self.freq * num + alpha_term
         else:
-            return self.freq * num - self.alpha * num
+            return (self.freq - self.alpha) * num + self.alpha / 12 * num**4
 
 
 class CavityMode(QuantumMode):
+    """Class representing a single Cavity mode in a quantum system."""
+
     def __init__(self, **kwargs):
+        """Initialize a CavityMode instance."""
         super().__init__(**kwargs)
 
     def H_0(self, system=None, **kwargs):
@@ -122,13 +128,15 @@ class CavityMode(QuantumMode):
 
 
 class SNAILMode(QuantumMode):
+    """Class representing a single SNAIL mode in a quantum system."""
+
     def __init__(self, **kwargs):
+        """Initialize a SNAILMode instance representing a single SNAIL mode."""
         super().__init__(**kwargs)
         self.g3 = kwargs["g3"] * 2 * np.pi  # Convert g3 from GHz to rad/s
 
     def H_0(self, system=None, **kwargs):
-        """Calculate the Hamiltonian for a SNAIL mode, with an option for the
-        Rotating Wave Approximation.
+        """Calculate the Hamiltonian for a SNAIL mode, with optional RWA.
 
         Args:
             system (QuantumSystem, optional): The quantum system to which the mode belongs.
@@ -142,7 +150,7 @@ class SNAILMode(QuantumMode):
         a, a_dag, num, field = self._get_operators(system)
 
         if RWA:
-            g3_term = self.g3 / 6 * (3 * a_dag * a * a + 3 * a_dag * a_dag * a)
+            g3_term = self.g3 / 2 * (a_dag * a * a + a_dag * a_dag * a)
             return self.freq * num + g3_term
         else:
             return self.freq * num + self.g3 / 6 * field**3
