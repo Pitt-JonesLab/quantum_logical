@@ -1,59 +1,148 @@
 """Class representing a single mode in a quantum system."""
 
+from abc import ABC, abstractmethod
+
+import numpy as np
 import qutip as qt
 
 
-class QuantumMode:
+class QuantumMode(ABC):
     """Class representing a single mode in a quantum system."""
 
-    def __init__(self, name: str, freq: float, dim: int, **kwargs):
+    def __new__(cls, **kwargs):
+        mode_type = kwargs["mode_type"]
+        if cls is QuantumMode:
+            if mode_type == "Qubit":
+                return super().__new__(QubitMode)
+            elif mode_type == "Cavity":
+                return super().__new__(CavityMode)
+            elif mode_type == "SNAIL":
+                return super().__new__(SNAILMode)
+            else:
+                raise ValueError(f"Unknown mode type: {mode_type}")
+        return super().__new__(cls)
+
+    def __init__(self, **kwargs):
         """Initialize a QuantumMode instance representing a single mode.
 
         Args:
             name (str): The name of the quantum mode.
-            freq (float): The frequency of the quantum mode.
+            freq (float): The frequency of the quantum mode (GHz).
             dim (int): The dimension of the Hilbert space for this mode.
-            **kwargs: Additional properties of the mode, e.g., 'alpha' for qubits, 'g3' for SNAILs.
-
-        The kwargs are used to add any additional attributes specific to different types of quantum modes.
         """
-        self.name = name
-        self.freq = freq
-        self.dim = dim
-        self.__dict__.update(kwargs)
+        self.name = kwargs["name"]
+        self.freq = kwargs["freq"] * 2 * np.pi  # Convert from GHz to rad/s
+        self.dim = kwargs["dim"]
 
         # Initialize quantum operators
-        self.a = qt.destroy(dim)  # Annihilation operator
+        self.a = qt.destroy(self.dim)  # Annihilation operator
         self.a_dag = self.a.dag()  # Creation operator
-        self.num = qt.num(dim)  # Number operator
+        self.num = qt.num(self.dim)  # Number operator
         self.field = self.a + self.a_dag  # Field operator
-
-        # verify has attribute g3 or alpha, but not both
-        assert hasattr(self, "g3") ^ hasattr(self, "alpha")
 
     def __repr__(self) -> str:
         """Return a string representation of the QuantumMode."""
-        return f"QuantumMode(name={self.name}, freq={self.freq} GHz, dim={self.dim})"
+        return f"{self.__class__.__name__}(name={self.name}, freq={self.freq / (2 * np.pi)} GHz, dim={self.dim})"
+
+    def _get_operators(self, system):
+        """Return the appropriate set of operators depending on the context."""
+        if system is not None:
+            return (
+                system.modes_a[self],
+                system.modes_a_dag[self],
+                system.modes_num[self],
+                system.modes_field[self],
+            )
+        return self.a, self.a_dag, self.num, self.field
+
+    @abstractmethod
+    def H_0(self, system=None, **kwargs):
+        """Calculate the non-perturbed Hamiltonian for the mode.
+
+        Args:
+            system (QuantumSystem, optional): The quantum system to which the mode belongs.
+                If provided, the Hamiltonian is calculated using operators that are part of the
+                larger system's Hilbert space. If None, the Hamiltonian is calculated for the mode in isolation.
+
+        Returns:
+            qutip.Qobj: The Hamiltonian operator for this mode.
+        """
+        pass
 
 
-# class QubitMode(QuantumMode):
-#     def __init__(self, ...):
-#         ...
+class QubitMode(QuantumMode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.alpha = kwargs["alpha"] * 2 * np.pi  # Convert alpha from GHz to rad/s
 
-#     def _H0(quantum_system, RWA=True, TLS=True):
-#         a, a_dag, num, field = quantum_system.modes_a[self], quantum_system.modes_a_dag[self], quantum_system.modes_num[self], quantum_system.modes_field[self]
-#         if not (RWA or TLS):
-#             return 2 * np.pi * (mode.freq - mode.alpha) * _num
+    def H_0(self, system=None, **kwargs):
+        """Calculate the Hamiltonian for a Qubit mode, with options for
+        specific approximations.
 
-#         if RWA and not TLS:
-#             alpha_term = mode.alpha / 2 * _ad * _ad * _a * _a
-#             return 2 * np.pi * (mode.freq * _num + alpha_term)
-#         else:
-#             _sz = _ad * _a - _a * _ad
-#             return 2 * np.pi * mode.freq * _sz / 2
+        Args:
+            system (QuantumSystem, optional): The quantum system to which the mode belongs.
+            RWA (bool, optional): Flag to use the Rotating Wave Approximation. Defaults to True.
+            TLS (bool, optional): Flag to use the Two-Level System approximation. Defaults to True.
 
-# class CavityMode(QuantumMode):
-#     ...
+        Returns:
+            qutip.Qobj: The Hamiltonian operator for this Qubit mode.
+        """
+        RWA = kwargs.get("RWA", True)
+        TLS = kwargs.get("TLS", True)
 
-# class SNAILMode(QuantumMode):
-#     ...
+        a, a_dag, num, _ = self._get_operators(system)
+
+        if TLS:  # TLS overrides RWA
+            if self.dim != 2:
+                raise ValueError("TLS approximation requires a 2-level system.")
+            sz = a_dag * a - a * a_dag
+            return self.freq * sz / 2
+        elif RWA:
+            alpha_term = self.alpha / 2 * a_dag * a_dag * a * a
+            return self.freq * num + alpha_term
+        else:
+            return self.freq * num - self.alpha * num
+
+
+class CavityMode(QuantumMode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def H_0(self, system=None, **kwargs):
+        """Calculate the Hamiltonian for a Cavity mode.
+
+        Args:
+            system (QuantumSystem, optional): The quantum system to which the mode belongs.
+
+        Returns:
+            qutip.Qobj: The Hamiltonian operator for this Cavity mode.
+        """
+        _, _, num, _ = self._get_operators(system)
+        return self.freq * num
+
+
+class SNAILMode(QuantumMode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.g3 = kwargs["g3"] * 2 * np.pi  # Convert g3 from GHz to rad/s
+
+    def H_0(self, system=None, **kwargs):
+        """Calculate the Hamiltonian for a SNAIL mode, with an option for the
+        Rotating Wave Approximation.
+
+        Args:
+            system (QuantumSystem, optional): The quantum system to which the mode belongs.
+            RWA (bool, optional): Flag to use the Rotating Wave Approximation. Defaults to True.
+
+        Returns:
+            qutip.Qobj: The Hamiltonian operator for this SNAIL mode.
+        """
+        RWA = kwargs.get("RWA", True)
+
+        a, a_dag, num, field = self._get_operators(system)
+
+        if RWA:
+            g3_term = self.g3 / 6 * (3 * a_dag * a * a + 3 * a_dag * a_dag * a)
+            return self.freq * num + g3_term
+        else:
+            return self.freq * num + self.g3 / 6 * field**3

@@ -4,6 +4,7 @@ from functools import reduce
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import numpy as np
 import qutip as qt
 import yaml
 
@@ -115,16 +116,20 @@ class QuantumSystem:
         with open(yaml_path, "r") as file:
             data = yaml.safe_load(file)
 
-        # Create QuantumMode instances from modes data
-        modes = [QuantumMode(name=k, **v) for k, v in data["modes"].items()]
+        modes = []
+        for name, properties in data["modes"].items():
+            mode = QuantumMode(name=name, **properties)
+            modes.append(mode)
 
         # Process couplings
         couplings = {}
-        for k, v in data["couplings"].items():
-            mode_names = v["modes"]
+        for k, coupling in data["couplings"].items():
+            mode_names = coupling["modes"]
             mode_objs = [
                 next(mode for mode in modes if mode.name == name) for name in mode_names
             ]
-            couplings[tuple(mode_objs)] = v["g2"]
+            couplings[tuple(mode_objs)] = (
+                coupling["g2"] * 2 * np.pi
+            )  # Convert g2 from GHz to rad/s
 
         return cls(modes, couplings)
