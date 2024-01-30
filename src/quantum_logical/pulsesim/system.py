@@ -42,6 +42,7 @@ class QuantumSystem:
         self.modes_field = {
             mode: self._tensor_op(mode, mode.field) for mode in self.modes
         }
+        self.modes_Z = {mode: self._tensor_op(mode, mode.Z) for mode in self.modes}
 
     def _tensor_op(self, mode: QuantumMode, op: qt.Qobj):
         """Tensor an operator with the identity operator on all other modes.

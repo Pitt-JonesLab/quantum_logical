@@ -40,6 +40,7 @@ class QuantumMode(ABC):
         self.a_dag = self.a.dag()  # Creation operator
         self.num = qt.num(self.dim)  # Number operator
         self.field = self.a + self.a_dag  # Field operator
+        self.Z = self.a * self.a_dag - self.a_dag * self.a  # Z operator
 
     def __repr__(self) -> str:
         """Return a string representation of the QuantumMode."""
@@ -53,8 +54,9 @@ class QuantumMode(ABC):
                 system.modes_a_dag[self],
                 system.modes_num[self],
                 system.modes_field[self],
+                system.modes_Z[self],
             )
-        return self.a, self.a_dag, self.num, self.field
+        return self.a, self.a_dag, self.num, self.field, self.Z
 
     @abstractmethod
     def H_0(self, system=None, **kwargs):
@@ -93,13 +95,12 @@ class QubitMode(QuantumMode):
         RWA = kwargs.get("RWA", True)
         TLS = kwargs.get("TLS", True)
 
-        a, a_dag, num, _ = self._get_operators(system)
+        a, a_dag, num, _, Z = self._get_operators(system)
 
         if TLS:  # TLS overrides RWA
             if self.dim != 2:
                 raise ValueError("TLS approximation requires a 2-level system.")
-            sz = a_dag * a - a * a_dag
-            return self.freq * sz / 2
+            return self.freq * Z / 2
         elif RWA:
             alpha_term = self.alpha / 2 * a_dag * a_dag * a * a
             return self.freq * num + alpha_term
@@ -123,7 +124,7 @@ class CavityMode(QuantumMode):
         Returns:
             qutip.Qobj: The Hamiltonian operator for this Cavity mode.
         """
-        _, _, num, _ = self._get_operators(system)
+        _, _, num, _, _ = self._get_operators(system)
         return self.freq * num
 
 
@@ -147,7 +148,7 @@ class SNAILMode(QuantumMode):
         """
         RWA = kwargs.get("RWA", True)
 
-        a, a_dag, num, field = self._get_operators(system)
+        a, a_dag, num, field, _ = self._get_operators(system)
 
         if RWA:
             g3_term = self.g3 / 2 * (a_dag * a * a + a_dag * a_dag * a)
