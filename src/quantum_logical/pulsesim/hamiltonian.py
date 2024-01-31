@@ -53,8 +53,8 @@ class Hamiltonian(ABC):
 
 
 class QubitQubitSNAIL(Hamiltonian):
-    def __init__(self, quantum_system: QuantumSystem):
-        super().__init__(quantum_system)
+    def __init__(self, quantum_system: QuantumSystem, use_RWA=True, use_TLS=True):
+        super().__init__(quantum_system, use_RWA, use_TLS)
 
         # grab references to modes
         self.q1_mode = self.system.modes[1]  # Q1

@@ -36,26 +36,43 @@ class Pulse:
 
     def drive(self, t, args):
         """Drive function applying amplitude and frequency modulation."""
-        pulse_shape = args.get("shape", Pulse.box)
-        shape_params = args.get("shape_params", {})
-        envelope = pulse_shape(t, **shape_params)
+        envelope = args["shape"](t, **args["shape_params"])
         return self.amp * np.cos(self.omega * t + self.phi) * envelope
 
-    def plot_pulse(self, pulse_shape, t_list, **shape_params):
-        """Plot both the pulse envelope and the modulated pulse."""
-        envelope_values = [pulse_shape(t, **shape_params) for t in t_list]
-        modulated_values = [
-            self.drive(t, {"shape": pulse_shape, "shape_params": shape_params})
-            for t in t_list
-        ]
-        plt.plot(
-            t_list, modulated_values, label="Modulated Pulse", linestyle="--", alpha=0.7
-        )
-        plt.plot(
-            t_list, envelope_values, label="Pulse Envelope", linewidth=2, color="red"
-        )
+    @staticmethod
+    def plot_pulse(pulses, t_list, show=True):
+        """Plot multiple pulse envelopes and their modulated signals on the
+        same plot.
+
+        Parameters:
+        - pulses: A list of tuples, each containing a pulse instance and its corresponding args dict.
+        - t_list: A list or array of time points at which to evaluate the pulses.
+        - show: A boolean indicating whether to show the plot immediately.
+        """
+        for index, (pulse, args) in enumerate(pulses):
+            pulse_shape = args["shape"]
+            shape_params = args["shape_params"]
+            envelope_values = [pulse_shape(t, **shape_params) for t in t_list]
+            modulated_values = [
+                pulse.drive(t, {"shape": pulse_shape, "shape_params": shape_params})
+                for t in t_list
+            ]
+
+            plt.plot(
+                t_list,
+                modulated_values,
+                linestyle="--",
+                alpha=0.7,
+                label=f"Modulated {index + 1}",
+            )
+            plt.plot(
+                t_list, envelope_values, linewidth=2, label=f"Envelope {index + 1}"
+            )
+
         plt.xlabel("Time (dt)")
         plt.ylabel("Amplitude")
-        plt.title("Envelope and Modulated Pulse")
+        plt.title("Envelope and Modulated Signals")
         plt.legend()
-        plt.show()
+
+        if show:
+            plt.show()

@@ -100,7 +100,7 @@ class QubitMode(QuantumMode):
         if TLS:  # TLS overrides RWA
             if self.dim != 2:
                 raise ValueError("TLS approximation requires a 2-level system.")
-            return self.freq * Z / 2
+            return -self.freq * Z / 2
         elif RWA:
             alpha_term = self.alpha / 2 * a_dag * a_dag * a * a
             return self.freq * num + alpha_term
@@ -150,8 +150,10 @@ class SNAILMode(QuantumMode):
 
         a, a_dag, num, field, _ = self._get_operators(system)
 
+        # for some reason, SNAIL RWA breaks my simulation
+
         if RWA:
-            g3_term = self.g3 / 2 * (a_dag * a * a + a_dag * a_dag * a)
+            g3_term = self.g3 / 2 * (a_dag * a * a + a * a_dag * a_dag)
             return self.freq * num + g3_term
         else:
             return self.freq * num + self.g3 / 6 * field**3
