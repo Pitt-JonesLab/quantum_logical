@@ -32,15 +32,29 @@ class QuantumMode(ABC):
             dim (int): The dimension of the Hilbert space for this mode.
         """
         self.name = kwargs["name"]
-        self.freq = kwargs["freq"] * 2 * np.pi  # Convert from GHz to rad/s
+        self.freq = kwargs["freq"] * 2 * np.pi  # Convert from GHz to rad/ns
         self.dim = kwargs["dim"]
+
+        # lifetimes
+        self.T1 = kwargs.get("T1", 100)  # relaxation time (ns)
+        self.T2 = kwargs.get("T2", 100)  # dephasing time (ns)
+        self.Tphi = 1 / (1 / self.T2 - 1 / (2 * self.T1))  # phase coherence time (ns)
+
+        # collapse rates
+        self.gamma_1 = 1 / self.T1 if self.T1 > 0 else 0
+        self.gamma_phi = 1 / self.Tphi if self.Tphi > 0 else 0
 
         # Initialize quantum operators
         self.a = qt.destroy(self.dim)  # Annihilation operator
         self.a_dag = self.a.dag()  # Creation operator
         self.num = qt.num(self.dim)  # Number operator
         self.field = self.a + self.a_dag  # Field operator
-        self.Z = self.a * self.a_dag - self.a_dag * self.a  # Z operator
+        if self.dim == 2:
+            self.Z = qt.sigmaz()
+        # FIXME, not a well defined operator
+        else:
+            self.Z = qt.identity(self.dim)
+        # self.Z = self.a * self.a_dag - self.a_dag * self.a  # Z operator
 
     def __repr__(self) -> str:
         """Return a string representation of the QuantumMode."""
@@ -57,6 +71,20 @@ class QuantumMode(ABC):
                 system.modes_Z[self],
             )
         return self.a, self.a_dag, self.num, self.field, self.Z
+
+    def collapse_operators(self, system=None):
+        """Return the collapse operators for the mode.
+
+        See qutip.lindblad_dissipator and qutip.
+
+        Args:
+            system (QuantumSystem, optional): The quantum system to which the mode belongs.
+
+        Returns:
+            list: The collapse operators for the mode.
+        """
+        a, _, num, _, _ = self._get_operators(system)
+        return [np.sqrt(self.gamma_1) * a, np.sqrt(self.gamma_phi / 2) * num]
 
     @abstractmethod
     def H_0(self, system=None, **kwargs):
