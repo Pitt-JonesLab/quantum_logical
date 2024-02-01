@@ -9,6 +9,7 @@ version = "0.1.0"
 authors = [{ name = "Evan McKinney" }]
 requires-python = ">=3.9"
 dependencies = [
+    "tqdm",
     "numpy",
     "qiskit",
     "qutip",
