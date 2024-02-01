@@ -36,8 +36,8 @@ class QuantumMode(ABC):
         self.dim = kwargs["dim"]
 
         # lifetimes
-        self.T1 = kwargs.get("T1", 100)  # relaxation time (ns)
-        self.T2 = kwargs.get("T2", 100)  # dephasing time (ns)
+        self.T1 = kwargs.get("T1", 100000)  # relaxation time (ns)
+        self.T2 = kwargs.get("T2", 50000)  # dephasing time (ns)
         self.Tphi = 1 / (1 / self.T2 - 1 / (2 * self.T1))  # phase coherence time (ns)
 
         # collapse rates

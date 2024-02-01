@@ -9,8 +9,8 @@ modes:
     freq: 5.06167
     alpha: -0.161
     dim: 2
-    T1: 100e3 # us
-    T2: 50e3 # us
+    T1: 100000 # ns
+    T2: 50000 # us
   # q3:
   #   mode_type: "Qubit"
   #   freq: 4.16829
@@ -21,15 +21,15 @@ modes:
     freq: 4.54944
     alpha: -0.1275
     dim: 2
-    T1: 100e3 # us
-    T2: 50e3 # us
+    T1: 100000 # us
+    T2: 50000 # us
   SNAIL:
     mode_type: "SNAIL"
     freq: 4.27515
     g3: 0.3
     dim: 10
-    T1: 100e3 # us
-    T2: 50e3 # us
+    T1: 100000 # us
+    T2: 50000 # us
 
 couplings:
   # q1s:
