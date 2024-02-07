@@ -13,6 +13,7 @@ dependencies = [
     "numpy",
     "qiskit",
     "qutip",
+    "scqubits",
     "weylchamber",
     "matplotlib",
     "LovelyPlots",
