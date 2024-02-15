@@ -1,4 +1,5 @@
 """Trotterization of continuous operators."""
+
 from typing import Iterable
 
 import numpy as np

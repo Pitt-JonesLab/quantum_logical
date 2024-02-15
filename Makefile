@@ -7,6 +7,7 @@ init:
 	rm -rf .venv
 	$(PYTHON_VERSION) -m venv .venv
 	@$(PIP) install --upgrade pip
+
 	$(PIP) install -e .[dev]
 	@$(PRE_COMMIT) install
 	@$(PRE_COMMIT) autoupdate

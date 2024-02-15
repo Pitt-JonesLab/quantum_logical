@@ -7,6 +7,7 @@ logical qubit 0 is now encoded qubits [0,1,2]. we might find it useful
 to have logical qubits point to both a quantum register and a classical
 register (where the syndrome measurements take place).
 """
+
 from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister
 from qiskit.circuit import CircuitError, EquivalenceLibrary, Qubit
 from qiskit.circuit.equivalence import (

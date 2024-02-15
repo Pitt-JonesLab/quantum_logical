@@ -173,9 +173,7 @@ def reduce_to_two_qubit_subspace(unitary, indices):
         raise ValueError("Index out of range for the given level dimension.")
 
     # Create the isometry
-    isometry = Qobj(
-        np.zeros((4, level_dim**2)), dims=[[2, 2], [level_dim, level_dim]]
-    )
+    isometry = Qobj(np.zeros((4, level_dim**2)), dims=[[2, 2], [level_dim, level_dim]])
 
     # Construct the isometry using tensor products of the basis states
     for qubit_index, (qudit_index1, qudit_index2) in enumerate(
@@ -196,6 +194,10 @@ def reduce_to_two_qubit_subspace(unitary, indices):
     reduced_unitary.dims = [[2, 2], [2, 2]]
 
     return reduced_unitary
+
+
+# NOTE, a more conventional way to describe these are using pauli matrices
+# e.g. sigma_minus = 1/2 * (sigma_x - i sigma_y)
 
 
 def selective_destroy(levels: int, from_level: int, to_level: int) -> qutip.Qobj:
