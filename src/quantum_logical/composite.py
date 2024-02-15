@@ -1,4 +1,5 @@
 """Composite interactions for the quantum logical model."""
+
 # TODO
 # composed interactions for VGate, DeltaGate
 

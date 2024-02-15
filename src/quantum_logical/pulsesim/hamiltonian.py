@@ -29,6 +29,7 @@ class Hamiltonian(ABC):
         self.use_RWA = use_RWA
 
     def _build_H(self):
+        """Generate the Hamiltonian for the system."""
         self.H = 0
 
         for mode in self.system.modes:
@@ -53,7 +54,10 @@ class Hamiltonian(ABC):
 
 
 class QubitQubitSNAIL(Hamiltonian):
+    """Hamiltonian for a quantum system with two qubits and a SNAIL mode."""
+
     def __init__(self, quantum_system: QuantumSystem, use_RWA=True, use_TLS=True):
+        """Initialize the Hamiltonian for a given quantum system."""
         super().__init__(quantum_system, use_RWA, use_TLS)
 
         # grab references to modes
@@ -72,18 +76,21 @@ class QubitQubitSNAIL(Hamiltonian):
         self._build_H()
 
     def driven(self, pulse: Pulse):
+        """Return the Hamiltonian with the pulse applied."""
         return [self.H, [self.snail_field, pulse.drive]]
 
 
 class QubitQubitCavity(Hamiltonian):
-    """Reference:
+    """Hamiltonian for a quantum system with two qubits and a cavity mode.
+
+    Reference:
     [1] A. Blais, R.-S. Huang, A. Wallraff, S. M. Girvin, and R. J. Schoelkopf
     doi: 10.1103/PhysRevA.69.062320.
     [2] A. Blais et al., Phys. Rev. A, vol. 75, no. 3, p. 032329, Mar. 2007, doi: 10.1103/PhysRevA.75.032329.
-
     """
 
     def __init__(self, quantum_system: QuantumSystem):
+        """Initialize the Hamiltonian for a given quantum system."""
         super().__init__(quantum_system)
 
         # grab references to modes
@@ -100,6 +107,7 @@ class QubitQubitCavity(Hamiltonian):
         self._build_H()
 
     def _build_H(self):
+        """Generate the Hamiltonian for the system."""
         self.H = 0
 
         for mode in self.system.modes:
@@ -107,16 +115,15 @@ class QubitQubitCavity(Hamiltonian):
 
     # override the interaction term
     def _H_int(self):
-        """Generate the coupling part of the Hamiltonian."""
+        r"""Generate the coupling part of the Hamiltonian.
 
-        # Equation [1](32), substracting the non-interacting terms
-        # which will be included by self._build_H()
+        Equation [1](32), substracting the non-interacting terms which
+        will be included by self._build_H()
 
-        # returns a list of terms [H1, H2, H3]
-        # where H1 is scaled by \eta1(t)
-        # H2 is scaled by \eta2(t)
-        # H3 is scaled by \eta1(t) * \eta2(t)
-
+        Returns a list of terms [H1, H2, H3] where H1 is scaled by
+        \eta1(t) H2 is scaled by \eta2(t) H3 is scaled by \eta1(t) *
+        \eta2(t)
+        """
         H1, H2, H3 = 0, 0, 0
 
         _g1 = self.system.couplings[(self.q1_mode, self.cavity_mode)]
@@ -147,7 +154,7 @@ class QubitQubitCavity(Hamiltonian):
         return [H1, H2, H3]
 
     def driven(self, pulse1: Pulse, pulse2: Pulse):
-        """Return the Hamiltonian with the two pulses applied.
+        r"""Return the Hamiltonian with the two pulses applied.
 
         Args:
             pulse1 (Pulse): The first pulse to apply.
@@ -163,7 +170,6 @@ class QubitQubitCavity(Hamiltonian):
         we end up factoring (1+2\eta+\eta^2) from the first coupling term, (1+2\eta+\eta^2) from the second coupling term,
         and (1+\eta1+\eta2+\eta1\eta2) from the third coupling term. These are the functions returned by this method.
         """
-
         _H1, _H2, _H3 = self._H_int()
 
         def transformed_pulse1(t, args):

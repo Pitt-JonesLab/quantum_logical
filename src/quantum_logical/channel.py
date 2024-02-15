@@ -1,4 +1,5 @@
 """Error channels for quantum systems."""
+
 from abc import ABC, abstractmethod
 from typing import List, Union
 

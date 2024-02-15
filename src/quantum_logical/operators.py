@@ -173,9 +173,7 @@ def reduce_to_two_qubit_subspace(unitary, indices):
         raise ValueError("Index out of range for the given level dimension.")
 
     # Create the isometry
-    isometry = Qobj(
-        np.zeros((4, level_dim**2)), dims=[[2, 2], [level_dim, level_dim]]
-    )
+    isometry = Qobj(np.zeros((4, level_dim**2)), dims=[[2, 2], [level_dim, level_dim]])
 
     # Construct the isometry using tensor products of the basis states
     for qubit_index, (qudit_index1, qudit_index2) in enumerate(

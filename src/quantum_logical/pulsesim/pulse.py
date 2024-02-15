@@ -41,8 +41,7 @@ class Pulse:
 
     @staticmethod
     def plot_pulse(pulses, t_list, show=True):
-        """Plot multiple pulse envelopes and their modulated signals on the
-        same plot.
+        """Plot pulse envelopes and their modulated signals on the same plot.
 
         Parameters:
         - pulses: A list of tuples, each containing a pulse instance and its corresponding args dict.
