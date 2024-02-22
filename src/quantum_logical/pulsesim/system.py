@@ -54,7 +54,7 @@ class QuantumSystem:
             for other_mode in self.modes:
                 if mode != other_mode:
                     # += \lambda_{xy}g_{xy}
-                    dressed_freq += self._lambda(mode, other_mode) * self._g(
+                    dressed_freq -= self._lambda(mode, other_mode) * self._g(
                         mode, other_mode
                     )
             self.dressed_freqs[mode] = dressed_freq
