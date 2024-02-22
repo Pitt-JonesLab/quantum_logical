@@ -27,6 +27,38 @@ class QuantumSystem:
         self.modes = modes
         self.couplings = couplings
         self._initialize_mode_operators()
+        self._initialize_dressed_freqs()
+
+    def _g(self, x, y):
+        return self.couplings.get(frozenset([x, y]), 0)
+
+    def _lambda(self, x, y):
+        # lambda = g / (omega_x - omega_y)
+
+        if x is y:
+            return 1
+
+        return self._g(x, y) / (x.freq - y.freq)
+
+    def _initialize_dressed_freqs(self):
+        r"""Calculate the dressed frequencies for each mode in the system.
+
+        \Tilde{\omega}_x \approx \omega_x + \sum_y \lambda_{xy}g_{xy}
+
+        Returns:
+            dict: A dictionary with mode names as keys and dressed frequencies as values.
+        """
+        self.dressed_freqs = {}
+        for mode in self.modes:
+            dressed_freq = mode.freq
+            for other_mode in self.modes:
+                if mode != other_mode:
+                    # += \lambda_{xy}g_{xy}
+                    dressed_freq += self._lambda(mode, other_mode) * self._g(
+                        mode, other_mode
+                    )
+            self.dressed_freqs[mode] = dressed_freq
+        return self.dressed_freqs
 
     def _initialize_mode_operators(self):
         """Initialize transformed system ops for each mode in the system.

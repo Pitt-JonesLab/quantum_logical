@@ -11,7 +11,7 @@ class QuantumMode(ABC):
 
     def __new__(cls, **kwargs):
         """Create a new QuantumMode instance of the appropriate subclass."""
-        mode_type = kwargs["mode_type"]
+        mode_type = kwargs.get("mode_type", None)
         if cls is QuantumMode:
             if mode_type == "Qubit":
                 return super().__new__(QubitMode)
