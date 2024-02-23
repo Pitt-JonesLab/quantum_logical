@@ -6,11 +6,15 @@ from quantum_logical.coupling_util.modular import AbstractModularCoupling
 class CorralCoupling(AbstractModularCoupling):
     """A corral-like coupling scheme."""
 
-    def __init__(self, num_snails=8, corral_skip_pattern=(0, 0)):
+    def __init__(
+        self, num_snails=8, corral_skip_pattern=(0, 0), snail_offset=0, qubit_offset=0
+    ):
         """Initialize the corral-like coupling scheme."""
         self.num_snails = num_snails
         self.corral_skip_pattern = corral_skip_pattern
         self.qubit_to_snail_map = {}  # Maps qubits to their primary SNAIL (module)
+        self.snail_offset = snail_offset
+        self.qubit_offset = qubit_offset
         super().__init__(description="Corral")
 
     def _assign_qubit_to_module(self, qubit, snail):
@@ -27,6 +31,8 @@ class CorralCoupling(AbstractModularCoupling):
         assert len(skip_pattern) == num_levels
         snail_edge_list = []
         for snail0, snail1 in zip(range(num_snails), range(1, num_snails + 1)):
+            snail0 += self.snail_offset
+            snail1 += self.snail_offset
             for i in range(num_levels):
                 snail_edge_list.append(
                     (snail0, (skip_pattern[i] + snail1) % num_snails)
@@ -36,6 +42,7 @@ class CorralCoupling(AbstractModularCoupling):
     def _snail_to_connectivity(self, snail_edge_list):
         edge_list = []
         for qubit, snail_edge in enumerate(snail_edge_list):
+            qubit += self.qubit_offset
             # Attempt to assign the qubit to a module based on its SNAIL edge
             self._assign_qubit_to_module(qubit, snail_edge[0])
             for temp_qubit, temp_snail_edge in enumerate(snail_edge_list):
