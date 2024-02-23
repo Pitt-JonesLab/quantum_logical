@@ -36,9 +36,9 @@ class QuantumSystem:
         # lambda = g / (omega_x - omega_y)
 
         if x is y:
-            return 1
+            return -1
 
-        return self._g(x, y) / (x.freq - y.freq)
+        return -1 * self._g(x, y) / (x.freq - y.freq)
 
     def _initialize_dressed_freqs(self):
         r"""Calculate the dressed frequencies for each mode in the system.
