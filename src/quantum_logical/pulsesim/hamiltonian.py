@@ -64,7 +64,9 @@ class QubitQubitSNAIL(Hamiltonian):
         self.q1_mode = self.system.modes[1]  # Q1
         self.q2_mode = self.system.modes[0]  # Q2
         self.snail_mode = self.system.modes[2]  # SNAIL
-        self.snail_field = self.system.modes_field[self.snail_mode]
+        # self.snail_field = self.system.modes_field[self.snail_mode]
+        self.snail_a = self.system.modes_a[self.snail_mode]
+        self.snail_adag = self.system.modes_a_dag[self.snail_mode]
 
         # make sure our quantum system is set up correctly
         assert isinstance(self.q1_mode, QuantumMode)
@@ -77,7 +79,8 @@ class QubitQubitSNAIL(Hamiltonian):
 
     def driven(self, pulse: Pulse):
         """Return the Hamiltonian with the pulse applied."""
-        return [self.H, [self.snail_field, pulse.drive]]
+        # return [self.H, [self.snail_adag - self.snail_a, pulse.drive]]
+        return [self.H, [self.snail_adag + self.snail_a, pulse.drive]]
 
 
 class QubitQubitCavity(Hamiltonian):
