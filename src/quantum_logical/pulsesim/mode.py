@@ -107,7 +107,9 @@ class QubitMode(QuantumMode):
     def __init__(self, **kwargs):
         """Initialize a QubitMode instance representing a single Qubit mode."""
         super().__init__(**kwargs)
-        self.alpha = kwargs["alpha"] * 2 * np.pi  # Convert alpha from GHz to rad/s
+        self.alpha = (
+            kwargs.get("alpha", -0.1275) * 2 * np.pi
+        )  # Convert alpha from GHz to rad/s
 
     def H_0(self, system=None, **kwargs):
         """Calculate the Hamiltonian for a Qubit mode, with optional RWA/TLS.
@@ -133,7 +135,7 @@ class QubitMode(QuantumMode):
             alpha_term = self.alpha / 2 * a_dag * a_dag * a * a
             return self.freq * num + alpha_term
         else:
-            return (self.freq - self.alpha) * num + self.alpha / 12 * num**4
+            return (self.freq * num) + self.alpha / 12 * num**4
 
 
 class CavityMode(QuantumMode):
