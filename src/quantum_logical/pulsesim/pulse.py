@@ -37,7 +37,13 @@ class Pulse:
     def drive(self, t, args):
         """Drive function applying amplitude and frequency modulation."""
         envelope = args["shape"](t, **args["shape_params"])
-        return self.amp * np.cos(self.omega * t + self.phi) * envelope
+        # FIXME, should this have been 2j * sin() instead?
+        # return self.amp * np.cos(self.omega * t + self.phi) * envelope
+        # for now, just use the explicit form (but has no reference to phase)
+        return self.amp * (
+            envelope * np.exp(-1j * self.omega * t)
+            - np.conj(envelope) * np.exp(1j * self.omega * t)
+        )
 
     @staticmethod
     def plot_pulse(pulses, t_list, show=True):
