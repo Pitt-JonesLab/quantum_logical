@@ -3,21 +3,21 @@
 # FIXME after making some changes to the code -
 # I am unsure if the docstring equations are all accurate
 
-
 from abc import ABC
 
 import numpy as np
 
-from quantum_logical.pulsesim.mode import CavityMode, QuantumMode, SNAILMode
-from quantum_logical.pulsesim.pulse import Pulse
-from quantum_logical.pulsesim.system import QuantumSystem
+from quantum_logical.mode import CavityMode, QuantumMode, SNAILMode
+from quantum_logical.pulse import Pulse
+from quantum_logical.system import QuantumSystem
 
 
 class Hamiltonian(ABC):
-    def __init__(self, quantum_system: QuantumSystem, use_RWA=False, use_TLS=False):
+    def __init__(self, quantum_system: QuantumSystem):
+        # , use_RWA=False, use_TLS=False):
         self.system = quantum_system
-        self.use_TLS = use_TLS
-        self.use_RWA = use_RWA
+        self.use_TLS = False
+        self.use_RWA = False
         self.H = self._build_H()
 
     def _build_H(self):
@@ -71,34 +71,34 @@ class Hamiltonian(ABC):
 #         return H_int
 
 
-# class QubitQubitSNAIL(Hamiltonian):
-#     """Hamiltonian for a quantum system with two qubits and a SNAIL mode."""
+class QubitQubitSNAIL(Hamiltonian):
+    """Hamiltonian for a quantum system with two qubits and a SNAIL mode."""
 
-#     def __init__(self, quantum_system: QuantumSystem, use_RWA=True, use_TLS=True):
-#         """Initialize the Hamiltonian for a given quantum system."""
-#         super().__init__(quantum_system, use_RWA, use_TLS)
+    def __init__(self, quantum_system: QuantumSystem, use_RWA=True, use_TLS=True):
+        """Initialize the Hamiltonian for a given quantum system."""
+        super().__init__(quantum_system)  # , use_RWA, use_TLS)
 
-#         # grab references to modes
-#         self.q1_mode = self.system.modes[1]  # Q1
-#         self.q2_mode = self.system.modes[0]  # Q2
-#         self.snail_mode = self.system.modes[2]  # SNAIL
-#         # self.snail_field = self.system.modes_field[self.snail_mode]
-#         self.snail_a = self.system.modes_a[self.snail_mode]
-#         self.snail_adag = self.system.modes_a_dag[self.snail_mode]
+        # grab references to modes
+        self.q1_mode = self.system.modes[1]  # Q1
+        self.q2_mode = self.system.modes[0]  # Q2
+        self.snail_mode = self.system.modes[2]  # SNAIL
+        # self.snail_field = self.system.modes_field[self.snail_mode]
+        self.snail_a = self.system.modes_a[self.snail_mode]
+        self.snail_adag = self.system.modes_a_dag[self.snail_mode]
 
-#         # make sure our quantum system is set up correctly
-#         assert isinstance(self.q1_mode, QuantumMode)
-#         assert isinstance(self.q2_mode, QuantumMode)
-#         assert isinstance(self.snail_mode, SNAILMode)
-#         assert len(self.system.modes) == 3
+        # make sure our quantum system is set up correctly
+        assert isinstance(self.q1_mode, QuantumMode)
+        assert isinstance(self.q2_mode, QuantumMode)
+        assert isinstance(self.snail_mode, SNAILMode)
+        assert len(self.system.modes) == 3
 
-#         # build the Hamiltonian, using standard coupling terms
-#         self._build_H()
+        # build the Hamiltonian, using standard coupling terms
+        self._build_H()
 
-#     def driven(self, pulse: Pulse):
-#         """Return the Hamiltonian with the pulse applied."""
-#         # return [self.H, [self.snail_adag - self.snail_a, pulse.drive]]
-#         return [self.H, [self.snail_adag + self.snail_a, pulse.drive]]
+    def driven(self, pulse: Pulse):
+        """Return the Hamiltonian with the pulse applied."""
+        # return [self.H, [self.snail_adag - self.snail_a, pulse.drive]]
+        return [self.H, [self.snail_adag + self.snail_a, pulse.drive]]
 
 
 # class QubitQubitCavity(Hamiltonian):
