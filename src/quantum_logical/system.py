@@ -9,10 +9,15 @@ import qutip as qt
 import yaml
 
 from quantum_logical.mode import QuantumMode
+from quantum_logical.hamiltonian import Hamiltonian
 
 
 class QuantumSystem:
-    """Class representing a quantum system."""
+    """Class representing a quantum system.
+
+    Rresponsible for managing the composite Hilbert space, including the creation and
+    management of tensor products for mode operators and states.
+    """
 
     def __init__(
         self, modes: List[QuantumMode], couplings: Dict[Tuple[QuantumMode], float]
@@ -28,6 +33,7 @@ class QuantumSystem:
         self.couplings = couplings
         self._initialize_mode_operators()
         self._initialize_dressed_freqs()
+        # self.hamiltonian = Hamiltonian(self.modes, self.couplings)
 
     def _g(self, x, y):
         return self.couplings.get(frozenset([x, y]), 0)
@@ -92,7 +98,7 @@ class QuantumSystem:
         return reduce(qt.tensor, op_list)
 
     def prepare_tensor_fock_state(self, mode_states: List[Tuple[QuantumMode, int]]):
-        """Prepare a Fock product state for specified modes.
+        """Prepare a dressed Fock product state for specified modes.
 
         Args:
             mode_states (list of tuples): Each tuple contains a QuantumMode object and an integer
@@ -108,7 +114,17 @@ class QuantumSystem:
                 raise ValueError(f"Mode {mode} not found in system.")
             state_list[self.modes.index(mode)] = qt.basis(mode.dim, state)
 
-        return reduce(qt.tensor, state_list)
+        psi0 = reduce(qt.tensor, state_list)
+        return psi0
+        # # search for dressed initial state using the eigenstates of the Hamiltonian
+        # EIGENVECTOR_THRES = 0.98
+        # eigenvalues, eigenvectors = self.H0.eigenstates()
+        # for eigen_index, eigenvector in enumerate(eigenvectors):
+        #     overlap = np.abs(eigenvector.overlap(psi0))
+        #     if overlap > EIGENVECTOR_THRES:
+        #         break
+        # print(f"Found overlap with eigenstate {eigen_index} by {overlap:.4f}")
+        # psi0 = eigenvectors[eigen_index]
 
     def mode_population_expectation(
         self, system_state: qt.Qobj, mode: QuantumMode, fock_state: int
