@@ -8,46 +8,63 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from quantum_logical.mode import QuantumMode
+from quantum_logical.mode import QuantumMode, SNAILMode
 from quantum_logical.pulse import Pulse
+from quantum_logical.system import QuantumSystem
 
 
-class Hamiltonian(ABC):
-    """Constructs basic interaction H defined by a QuantumSystem object."""
+class Hamiltonian:
+    """Constructs basic Hamiltonian defined by a QuantumSystem object."""
 
-    def __init__(
-        self, modes: List[QuantumMode], couplings: Dict[Tuple[QuantumMode], float]
-    ):
-        # , use_RWA=False, use_TLS=False):
-        self.modes = modes
-        self.couplings = couplings
-        self.use_TLS = False
-        self.use_RWA = False
-        self.H = self._build_H()
+    def __init__(self, quantum_system: "QuantumSystem", use_RWA=False, use_TLS=False):
+        """Initialize the Hamiltonian for a given quantum system."""
+        self.quantum_system = quantum_system
+        self.modes = quantum_system.modes
+        self.couplings = quantum_system.couplings
+        self.H_obj = self._build_H(use_RWA, use_TLS)
 
-    def _build_H(self):
+    def _build_H(self, use_RWA, use_TLS):
         self.H0 = 0
         for mode in self.modes:
-            self.H0 += mode.H_0(self.system, RWA=self.use_RWA, TLS=self.use_TLS)
+            self.H0 += mode.H_0(RWA=use_RWA, TLS=use_TLS)
 
         self.Hc = 0
-        for c, g in self.system.couplings.items():
+        for c, g in self.couplings.items():
             q1, q2 = c
-            self.Hc += g * (self.system.modes_field[q1] * self.system.modes_field[q2])
+            self.Hc += g * (
+                self.quantum_system.modes_field[q1]
+                * self.quantum_system.modes_field[q2]
+            )
 
         return self.H0 + self.Hc
 
+
+class DrivenHamiltonian(Hamiltonian, ABC):
+    """Abstract class for Hamiltonians with a driving term."""
+
     @abstractmethod
-    def drive(self):
-        raise NotImplementedError
+    def driven_term(self, mode: QuantumMode):
+        """Abstract method to implement the driving mechanism.
+
+        Args:
+            mode: The mode to which the driving term applies.
+        """
+        pass
 
 
-class QubitSNAILModule(Hamiltonian):
+class QubitSNAILModule(DrivenHamiltonian):
+    """Hamiltonian for a quantum system N qubits coupled to a SNAIL."""
 
-    def drive(self):
-        snail_a = self.system.modes_a[self.snail_mode]
-        snail_adag = self.system.modes_a_dag[self.snail_mode]
+    def driven_term(self, snail_mode: SNAILMode):
+        """Return SNAIL driven term."""
+        if snail_mode not in self.modes:
+            raise ValueError("SNAIL mode not in the system.")
+        snail_a = self.quantum_system.modes_a[snail_mode]
+        snail_adag = self.quantum_system.modes_a_dag[snail_mode]
+        # Displacement form
         return snail_adag + snail_a
+        # Squeezeing form
+        # return snail_adag - snail_a
 
 
 # class QubitQubitSNAIL(Hamiltonian):

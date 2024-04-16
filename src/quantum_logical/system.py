@@ -8,15 +8,16 @@ import numpy as np
 import qutip as qt
 import yaml
 
-from quantum_logical.mode import QuantumMode
 from quantum_logical.hamiltonian import Hamiltonian
+from quantum_logical.mode import QuantumMode
 
 
 class QuantumSystem:
     """Class representing a quantum system.
 
-    Rresponsible for managing the composite Hilbert space, including the creation and
-    management of tensor products for mode operators and states.
+    Rresponsible for managing the composite Hilbert space, including the
+    creation and management of tensor products for mode operators and
+    states.
     """
 
     def __init__(
@@ -33,7 +34,7 @@ class QuantumSystem:
         self.couplings = couplings
         self._initialize_mode_operators()
         self._initialize_dressed_freqs()
-        # self.hamiltonian = Hamiltonian(self.modes, self.couplings)
+        self.hamiltonian = Hamiltonian(self)
 
     def _g(self, x, y):
         return self.couplings.get(frozenset([x, y]), 0)
