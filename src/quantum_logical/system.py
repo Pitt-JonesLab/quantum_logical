@@ -32,40 +32,15 @@ class QuantumSystem:
         """
         self.modes = modes
         self.couplings = couplings
+        (
+            self.modes_a,
+            self.modes_a_dag,
+            self.modes_num,
+            self.modes_field,
+            self.modes_Z,
+        ) = None, None, None, None, None
         self._initialize_mode_operators()
-        self._initialize_dressed_freqs()
         self.hamiltonian = Hamiltonian(self)
-
-    def _g(self, x, y):
-        return self.couplings.get(frozenset([x, y]), 0)
-
-    def _lambda(self, x, y):
-        # lambda = g / (omega_x - omega_y)
-
-        if x is y:
-            return -1
-
-        return -1 * self._g(x, y) / (x.freq - y.freq)
-
-    def _initialize_dressed_freqs(self):
-        r"""Calculate the dressed frequencies for each mode in the system.
-
-        \Tilde{\omega}_x \approx \omega_x + \sum_y \lambda_{xy}g_{xy}
-
-        Returns:
-            dict: A dictionary with mode names as keys and dressed frequencies as values.
-        """
-        self.dressed_freqs = {}
-        for mode in self.modes:
-            dressed_freq = mode.freq
-            for other_mode in self.modes:
-                if mode != other_mode:
-                    # += \lambda_{xy}g_{xy}
-                    dressed_freq -= self._lambda(mode, other_mode) * self._g(
-                        mode, other_mode
-                    )
-            self.dressed_freqs[mode] = dressed_freq
-        return self.dressed_freqs
 
     def _initialize_mode_operators(self):
         """Initialize transformed system ops for each mode in the system.
@@ -98,7 +73,7 @@ class QuantumSystem:
         op_list[mode_index] = op
         return reduce(qt.tensor, op_list)
 
-    def prepare_tensor_fock_state(self, mode_states: List[Tuple[QuantumMode, int]]):
+    def prepare_fock_state(self, mode_states: List[Tuple[QuantumMode, int]]):
         """Prepare a dressed Fock product state for specified modes.
 
         Args:
@@ -117,33 +92,24 @@ class QuantumSystem:
 
         psi0 = reduce(qt.tensor, state_list)
         return psi0
-        # # search for dressed initial state using the eigenstates of the Hamiltonian
-        # EIGENVECTOR_THRES = 0.98
-        # eigenvalues, eigenvectors = self.H0.eigenstates()
-        # for eigen_index, eigenvector in enumerate(eigenvectors):
-        #     overlap = np.abs(eigenvector.overlap(psi0))
-        #     if overlap > EIGENVECTOR_THRES:
-        #         break
-        # print(f"Found overlap with eigenstate {eigen_index} by {overlap:.4f}")
-        # psi0 = eigenvectors[eigen_index]
 
-    def mode_population_expectation(
-        self, system_state: qt.Qobj, mode: QuantumMode, fock_state: int
-    ):
-        """Calculate expectation of the population of a mode in a given state.
+    # def mode_population_expectation(
+    #     self, system_state: qt.Qobj, mode: QuantumMode, fock_state: int
+    # ):
+    #     """Calculate expectation of the population of a mode in a given state.
 
-        Args:
-            system_state (qutip.Qobj): The state of the entire quantum system.
-            mode (QuantumMode): The mode for which the population is calculated.
-            fock_state (int): The Fock state number for the mode.
+    #     Args:
+    #         system_state (qutip.Qobj): The state of the entire quantum system.
+    #         mode (QuantumMode): The mode for which the population is calculated.
+    #         fock_state (int): The Fock state number for the mode.
 
-        Returns:
-            float: The expectation value of the mode population.
-        """
-        fock_state = qt.basis(mode.dim, fock_state)
-        fock_state_op = fock_state * fock_state.dag()
-        system_fock_state_op = self._tensor_op(mode, fock_state_op)
-        return qt.expect(system_fock_state_op, system_state)
+    #     Returns:
+    #         float: The expectation value of the mode population.
+    #     """
+    #     fock_state = qt.basis(mode.dim, fock_state)
+    #     fock_state_op = fock_state * fock_state.dag()
+    #     system_fock_state_op = self._tensor_op(mode, fock_state_op)
+    #     return qt.expect(system_fock_state_op, system_state)
 
     def __repr__(self) -> str:
         """Return a string representation of the QuantumSystem."""
@@ -183,3 +149,65 @@ class QuantumSystem:
             couplings[tuple(mode_objs)] = coupling["g2"] * 2 * np.pi
 
         return cls(modes, couplings)
+
+
+class DressedQuantumSystem(QuantumSystem):
+    def _g(self, x, y):
+        """Return the coupling strength between two modes."""
+        return self.couplings.get(frozenset([x, y]), 0)
+
+    def _lambda(self, x, y):
+        """Return the hybridization strength between two modes."""
+        # lambda = g / (omega_x - omega_y)
+        if x is y:
+            # FIXME, why negative?
+            # because we use it like this (dressed_freq -= ...)
+            return -1
+
+        return -1 * self._g(x, y) / (x.freq - y.freq)
+
+    def op_basis_transform(self, operator: qt.Qobj):
+        """Transform an operator or density matrix to the dressed basis."""
+        dressed_op = self.hamiltonian.H0 * operator * self.hamiltonian.H0.dag()
+        return dressed_op.unit()
+
+    def prepare_approx_state(self, mode_states: List[Tuple[QuantumMode, int]]):
+        """Prepare a dressed state for the system.
+
+        Rather than doing a strict basis transform, understand that physical states
+        have an always-on hybridization between modes. This function prepares a state which
+        is the mapping of the non-interacting state to the interacting state.
+
+        Assumes that the always-on hybridization is weak enough that the state is still
+        mostly in the non-interacting basis and therefore the inner product will be close to 1.
+        """
+        psi0 = super().prepare_tensor_fock_state(mode_states)
+        # search for dressed initial state using the eigenstates of the Hamiltonian
+        EIGENVECTOR_THRES = 0.98
+        _, eigenvectors = self.H0.eigenstates()
+        for eigen_index, eigenvector in enumerate(eigenvectors):
+            overlap = np.abs(eigenvector.overlap(psi0))
+            if overlap > EIGENVECTOR_THRES:
+                break
+        print(f"Found overlap with eigenstate {eigen_index} by {overlap:.4f}")
+        psi0 = eigenvectors[eigen_index]
+
+    def dressed_freqs(self):
+        r"""Calculate the dressed frequencies for each mode in the system.
+
+        \Tilde{\omega}_x \approx \omega_x + \sum_y \lambda_{xy}g_{xy}
+
+        Returns:
+            dict: A dictionary with mode names as keys and dressed frequencies as values.
+        """
+        self.dressed_freqs = {}
+        for mode in self.modes:
+            dressed_freq = mode.freq
+            for other_mode in self.modes:
+                if mode != other_mode:
+                    # += \lambda_{xy}g_{xy}
+                    dressed_freq -= self._lambda(mode, other_mode) * self._g(
+                        mode, other_mode
+                    )
+            self.dressed_freqs[mode] = dressed_freq
+        return self.dressed_freqs

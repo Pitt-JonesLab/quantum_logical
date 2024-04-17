@@ -26,7 +26,8 @@ class Hamiltonian:
     def _build_H(self, use_RWA, use_TLS):
         self.H0 = 0
         for mode in self.modes:
-            self.H0 += mode.H_0(RWA=use_RWA, TLS=use_TLS)
+            # pass in system to get operators in composite space
+            self.H0 += mode.H_0(system=self.quantum_system, RWA=use_RWA, TLS=use_TLS)
 
         self.Hc = 0
         for c, g in self.couplings.items():
