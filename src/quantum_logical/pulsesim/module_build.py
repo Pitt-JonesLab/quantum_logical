@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from itertools import product
 from tqdm.notebook import tqdm
 import cmath
+from qutip.qip.operations import iswap
 from scipy.optimize import curve_fit
 
 
@@ -31,20 +32,20 @@ class Module_build():
         ws_un = 6 - (1 / 3) * (1 / 2)
 
 
-        qubit1 = QubitMode(
+        qubit1 = QubitMode(mode_type = "Qubit",
             name="q1", dim=self.dim, freq=w1_un, alpha=-0.161, T1=1e2, T2=5e1
         )
-        qubit2 = QubitMode(
+        qubit2 = QubitMode(mode_type = "Qubit",
             name="q2", dim=self.dim, freq=w2_un, alpha=-0.1275, T1=1e2, T2=5e1
         )
-        qubit3 = QubitMode(
+        qubit3 = QubitMode(mode_type = "Qubit",
             name="q3", dim=self.dim, freq=w3_un, alpha=-0.160, T1=1e2, T2=5e1
         )
-        qubit4 = QubitMode(
+        qubit4 = QubitMode(mode_type = "Qubit",
             name="q4", dim=self.dim, freq=w4_un, alpha=-0.159, T1=1e2, T2=5e1
         )
         qubits = [qubit1, qubit2, qubit3, qubit4]
-        snail = SNAILMode(name="s", freq=ws_un, g3=0.3, dim=10, T1=1e3, T2=5e2)
+        snail = SNAILMode(mode_type = "Snail", name="s", freq=ws_un, g3=0.3, dim=10, T1=1e3, T2=5e2)
         _couplings = {
             frozenset([qubit1, snail]): 2 * np.pi * 0.05467,
             frozenset([qubit2, snail]): 2 * np.pi * 0.0435,
@@ -198,7 +199,7 @@ class Module_build():
 
         # build the desired unitary 
         # U_targ = U = qt.tensor(qt.qip.operations.iswap(N=2),qt.qeye(2),qt.identity(cavity.dim))
-        desired_U = qt.qip.operations.iswap()  # The iSWAP gate for a 2-qubit system
+        desired_U = iswap()  # The iSWAP gate for a 2-qubit system
 
         # Create isometries for qubit 1 and qubit 2 to extend the {g, e} subspace action to the full qubit space
         identity_isometry = (
