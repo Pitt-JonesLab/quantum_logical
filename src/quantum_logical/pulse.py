@@ -34,9 +34,16 @@ class Pulse:
         """Box pulse shape."""
         return np.heaviside(t - t0, 0) - np.heaviside(t - t0 - width, 0)
 
+    @staticmethod
+    def constant(t):
+        """Constant pulse shape."""
+        return 1
+
     def drive(self, t, args):
         """Drive function applying amplitude and frequency modulation."""
-        envelope = args["shape"](t, **args["shape_params"])
+        pulse_shape = args.get("shape", Pulse.constant)
+        shape_params = args.get("shape_params", {})
+        envelope = pulse_shape(t, **shape_params)
         # FIXME, should this have been 2j * sin() instead?
         return self.amp * np.cos(self.omega * t + self.phi) * envelope
 
@@ -56,8 +63,8 @@ class Pulse:
         - show: A boolean indicating whether to show the plot immediately.
         """
         for index, (pulse, args) in enumerate(pulses):
-            pulse_shape = args["shape"]
-            shape_params = args["shape_params"]
+            pulse_shape = args.get("shape", Pulse.constant)
+            shape_params = args.get("shape_params", {})
             envelope_values = [pulse_shape(t, **shape_params) for t in t_list]
             modulated_values = [
                 pulse.drive(t, {"shape": pulse_shape, "shape_params": shape_params})

@@ -21,7 +21,10 @@ class QuantumSystem:
     """
 
     def __init__(
-        self, modes: List[QuantumMode], couplings: Dict[Tuple[QuantumMode], float]
+        self,
+        modes: List[QuantumMode],
+        couplings: Dict[Tuple[QuantumMode], float],
+        hamiltonian_cls: Hamiltonian = None,
     ):
         """Initialize a quantum system with given modes and couplings.
 
@@ -29,6 +32,7 @@ class QuantumSystem:
             modes (list): A list of QuantumMode instances.
             couplings (dict): A dictionary where keys are tuples of coupled QuantumMode instances,
                               and values are the coupling strengths.
+            hamiltonian_cls (Hamiltonian, optional): The Hamiltonian object to be used for the system.
         """
         self.modes = modes
         self.couplings = couplings
@@ -46,7 +50,9 @@ class QuantumSystem:
             None,
         )
         self._initialize_mode_operators()
-        self.hamiltonian = Hamiltonian(self)
+        if hamiltonian_cls is None:
+            hamiltonian_cls = Hamiltonian
+        self.hamiltonian = hamiltonian_cls(self)
 
     def _initialize_mode_operators(self):
         """Initialize transformed system ops for each mode in the system.
@@ -202,18 +208,17 @@ class DressedQuantumSystem(QuantumSystem):
         state is still mostly in the non-interacting basis and therefore
         the inner product will be close to 1.
         """
-        psi0 = super().prepare_tensor_fock_state(mode_states)
+        psi0 = super().prepare_fock_state(mode_states)
         # search for dressed initial state using the eigenstates of the Hamiltonian
         EIGENVECTOR_THRES = 0.98
-        _, eigenvectors = self.H0.eigenstates()
-        for eigen_index, eigenvector in enumerate(eigenvectors):
-            overlap = np.abs(eigenvector.overlap(psi0))
-            if overlap > EIGENVECTOR_THRES:
-                break
-        print(f"Found overlap with eigenstate {eigen_index} by {overlap:.4f}")
-        psi0 = eigenvectors[eigen_index]
+        _, eigenvectors = self.hamiltonian.H0.eigenstates()
 
-    def dressed_freqs(self):
+        best_fit = max(eigenvectors, key=lambda x: np.abs(x.overlap(psi0)))
+        overlap = np.abs(best_fit.overlap(psi0))
+        print(f"Found overlap with eigenstate by {overlap:.4f}")
+        return best_fit
+
+    def _initialize_dressed_freqs(self):
         r"""Calculate the dressed frequencies for each mode in the system.
 
         \Tilde{\omega}_x \approx \omega_x + \sum_y \lambda_{xy}g_{xy}

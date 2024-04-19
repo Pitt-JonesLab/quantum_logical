@@ -57,10 +57,14 @@ class DrivenHamiltonian(Hamiltonian, ABC):
 class QubitSNAILModule(DrivenHamiltonian):
     """Hamiltonian for a quantum system N qubits coupled to a SNAIL."""
 
-    def driven_term(self, snail_mode: SNAILMode):
+    def driven_term(self, snail_mode: SNAILMode, n_max: int):
         """Return SNAIL driven term."""
         if snail_mode not in self.modes:
             raise ValueError("SNAIL mode not in the system.")
+
+        # set SNAIL max photon number
+        snail_mode.n_max = n_max
+
         snail_a = self.quantum_system.modes_a[snail_mode]
         snail_adag = self.quantum_system.modes_a_dag[snail_mode]
         # Displacement form
