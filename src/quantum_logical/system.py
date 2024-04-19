@@ -38,7 +38,13 @@ class QuantumSystem:
             self.modes_num,
             self.modes_field,
             self.modes_Z,
-        ) = None, None, None, None, None
+        ) = (
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
         self._initialize_mode_operators()
         self.hamiltonian = Hamiltonian(self)
 
@@ -168,18 +174,33 @@ class DressedQuantumSystem(QuantumSystem):
 
     def op_basis_transform(self, operator: qt.Qobj):
         """Transform an operator or density matrix to the dressed basis."""
-        dressed_op = self.hamiltonian.H0 * operator * self.hamiltonian.H0.dag()
-        return dressed_op.unit()
+        # NOTE, not entirely certain why this first method doesn't work
+        # dressed_op = self.hamiltonian.H0 * operator * self.hamiltonian.H0.dag()
+        # return dressed_op.unit()
+
+        _, eigenvectors = self.hamiltonian.H0.eigenstates()
+
+        dressed_rho = 0
+        for eigenvector_i in eigenvectors:
+            for eigenvector_j in eigenvectors:
+                dressed_rho += (
+                    (eigenvector_j.dag() * operator * eigenvector_i)
+                    * eigenvector_i
+                    * eigenvector_j.dag()
+                )
+        return dressed_rho
 
     def prepare_approx_state(self, mode_states: List[Tuple[QuantumMode, int]]):
         """Prepare a dressed state for the system.
 
-        Rather than doing a strict basis transform, understand that physical states
-        have an always-on hybridization between modes. This function prepares a state which
-        is the mapping of the non-interacting state to the interacting state.
+        Rather than doing a strict basis transform, understand that
+        physical states have an always-on hybridization between modes.
+        This function prepares a state which is the mapping of the non-
+        interacting state to the interacting state.
 
-        Assumes that the always-on hybridization is weak enough that the state is still
-        mostly in the non-interacting basis and therefore the inner product will be close to 1.
+        Assumes that the always-on hybridization is weak enough that the
+        state is still mostly in the non-interacting basis and therefore
+        the inner product will be close to 1.
         """
         psi0 = super().prepare_tensor_fock_state(mode_states)
         # search for dressed initial state using the eigenstates of the Hamiltonian

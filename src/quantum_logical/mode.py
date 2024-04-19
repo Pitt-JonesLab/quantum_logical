@@ -122,8 +122,8 @@ class QubitMode(QuantumMode):
         Returns:
             qutip.Qobj: The Hamiltonian operator for this Qubit mode.
         """
-        RWA = kwargs.get("RWA", True)
-        TLS = kwargs.get("TLS", True)
+        RWA = kwargs.get("RWA", False)
+        TLS = kwargs.get("TLS", False)
 
         a, a_dag, num, _, Z = self._get_operators(system)
 
@@ -176,7 +176,7 @@ class SNAILMode(QuantumMode):
         Returns:
             qutip.Qobj: The Hamiltonian operator for this SNAIL mode.
         """
-        RWA = kwargs.get("RWA", True)
+        RWA = kwargs.get("RWA", False)
 
         a, a_dag, num, field, _ = self._get_operators(system)
 

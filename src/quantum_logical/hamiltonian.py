@@ -10,7 +10,8 @@ import numpy as np
 
 from quantum_logical.mode import QuantumMode, SNAILMode
 from quantum_logical.pulse import Pulse
-from quantum_logical.system import QuantumSystem
+
+# from quantum_logical.system import QuantumSystem
 
 
 class Hamiltonian:
@@ -21,13 +22,13 @@ class Hamiltonian:
         self.quantum_system = quantum_system
         self.modes = quantum_system.modes
         self.couplings = quantum_system.couplings
-        self.H_obj = self._build_H(use_RWA, use_TLS)
+        self.H0 = self._build_H(use_RWA, use_TLS)
 
     def _build_H(self, use_RWA, use_TLS):
-        self.H0 = 0
+        self.H_NL = 0
         for mode in self.modes:
             # pass in system to get operators in composite space
-            self.H0 += mode.H_0(system=self.quantum_system, RWA=use_RWA, TLS=use_TLS)
+            self.H_NL += mode.H_0(system=self.quantum_system, RWA=use_RWA, TLS=use_TLS)
 
         self.Hc = 0
         for c, g in self.couplings.items():
@@ -37,7 +38,7 @@ class Hamiltonian:
                 * self.quantum_system.modes_field[q2]
             )
 
-        return self.H0 + self.Hc
+        return self.H_NL + self.Hc
 
 
 class DrivenHamiltonian(Hamiltonian, ABC):
