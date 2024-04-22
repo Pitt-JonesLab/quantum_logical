@@ -1,12 +1,9 @@
 import numpy as np
+from qutip import Options, ket2dm
 import qutip as qt
-
-import numpy as np
-from qutip import Options
-import qutip as qt
-from qutip import ket2dm
 from quantum_logical.pulsesim import QuantumSystem, Pulse
 from quantum_logical.pulsesim.mode import QubitMode, SNAILMode, CavityMode
+from quantum_logical.pulsesim.build_hamiltonian import Build_hamiltonian
 import matplotlib.pyplot as plt
 from itertools import product
 from tqdm.notebook import tqdm
@@ -27,8 +24,8 @@ class Module_build():
 
         w1_un = 4
         w2_un = 6
-        w3_un = 4.000001
-        w4_un = 5.999999
+        w3_un = 4.000000000001
+        w4_un = 5.999999999999
         ws_un = 6 - (1 / 3) * (1 / 2)
 
 
@@ -70,8 +67,13 @@ class Module_build():
         # wp = w1 - w2
         wp = w2 - w1
 
-        # unchanged terms of hamiltonian
+        # # unchanged terms of hamiltonian
         H_no_time = 6*(l1**2)*(qs.modes_a[qubit1]*qs.modes_a_dag[qubit2] + qs.modes_a[qubit2]*qs.modes_a_dag[qubit1])
+
+        # using the class created to build the hamiltonian 
+        # first and second are involved in the driving and the third and the fourth are the spectating ones
+        # Hs = Build_hamiltonian(l1, qs, qubit1, qubit2, qubit3, qubit4)
+        # H_main_qubits = Hs.build_drive_hamiltonian()
 
         #terms that come from the gate that is desired that do not go to one
         qubit1_qubit2_adj_H = 6*(l1**2)*qs.modes_a[qubit1]*qs.modes_a_dag[qubit2]
@@ -83,7 +85,10 @@ class Module_build():
         qubit1_adj_qubit2_H
         ]
 
-        # cell that will determine over which lambda power to evaluate
+        # building the added terms 
+        # H_added = Hs.build_drive_hamiltonian()
+
+        # # cell that will determine over which lambda power to evaluate
 
         qubit3_qubit2_adj_H = qs.modes_a[qubit3]*qs.modes_a_dag[qubit2]
         qubit3_adj_qubit2_H = qs.modes_a[qubit2]*qs.modes_a_dag[qubit3]
