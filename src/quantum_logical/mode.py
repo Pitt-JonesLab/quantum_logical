@@ -165,6 +165,7 @@ class SNAILMode(QuantumMode):
         """Initialize a SNAILMode instance representing a single SNAIL mode."""
         super().__init__(**kwargs)
         self.g3 = kwargs["g3"] * 2 * np.pi  # Convert g3 from GHz to rad/s
+        self.T1 = 5000  # 5 us (in ns), SNAIL lifetime
 
     def H_0(self, system=None, **kwargs):
         """Calculate the Hamiltonian for a SNAIL mode, with optional RWA.
