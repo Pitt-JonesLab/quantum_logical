@@ -164,6 +164,8 @@ class QuantumSystem:
 
 
 class DressedQuantumSystem(QuantumSystem):
+    """QuantumSystem with auxillary methods for hybridization of modes."""
+
     def _g(self, x, y):
         """Return the coupling strength between two modes."""
         return self.couplings.get(frozenset([x, y]), 0)
@@ -210,7 +212,6 @@ class DressedQuantumSystem(QuantumSystem):
         """
         psi0 = super().prepare_fock_state(mode_states)
         # search for dressed initial state using the eigenstates of the Hamiltonian
-        EIGENVECTOR_THRES = 0.98
         _, eigenvectors = self.hamiltonian.H0.eigenstates()
 
         best_fit = max(eigenvectors, key=lambda x: np.abs(x.overlap(psi0)))
