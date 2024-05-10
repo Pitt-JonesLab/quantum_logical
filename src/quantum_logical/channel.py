@@ -86,7 +86,7 @@ class Channel(CPTPMap):
             qubit_params = {key: value[qubit] for key, value in self.params.items()}
             qubit_operators.append(self._create_single_qubit_operators(**qubit_params))
         self._E = self._extend_kraus_operators_to_multiple(qubit_operators)
-        self._E = [np.array(E, dtype=complex) for E in self._E]
+        self._E = [np.array(E.full(), dtype=complex) for E in self._E]
         self._verify_completeness()
         return self._E
 
