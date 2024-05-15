@@ -17,7 +17,7 @@ dependencies = [
     "scqubits",
     "weylchamber",
     "matplotlib",
-    "LovelyPlots",
+    "SciencePlots",
     "rustworkx",
 
 ]
