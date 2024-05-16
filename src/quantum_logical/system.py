@@ -10,6 +10,7 @@ import yaml
 
 from quantum_logical.hamiltonian import Hamiltonian
 from quantum_logical.mode import QuantumMode
+from functools import lru_cache
 
 
 class QuantumSystem:
@@ -198,6 +199,7 @@ class DressedQuantumSystem(QuantumSystem):
                 )
         return dressed_rho
 
+    @lru_cache(maxsize=None)
     def prepare_approx_state(self, mode_states: List[Tuple[QuantumMode, int]]):
         """Prepare a dressed state for the system.
 
