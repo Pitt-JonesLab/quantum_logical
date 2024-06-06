@@ -13,7 +13,7 @@ repos:
       - id: conventional-commits
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.3.7"
+    rev: "v0.4.8"
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -43,7 +43,7 @@ repos:
         name: isort (python)
 
   - repo: https://github.com/psf/black
-    rev: 24.4.0
+    rev: 24.4.2
     hooks:
       - id: black-jupyter
         language_version: python3.9
