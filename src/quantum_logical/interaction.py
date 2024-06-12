@@ -4,7 +4,7 @@ import numpy as np
 import qutip
 from qutip import tensor
 
-from quantum_logical.deprecated.operators import selective_destroy
+from quantum_logical.operators import selective_destroy
 
 __all__ = [
     "ConversionGainInteraction",
