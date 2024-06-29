@@ -239,7 +239,7 @@ class Module_build():
             w = sum(Z)
             U_propagator = (-1j * w).expm()
 
-            #calculate the fidelity
+            # calculate the fidelity
             fid = np.abs(qt.average_gate_fidelity(desired_U, U_propagator))
             results.append([i,fid])
             fids.append(fid)
