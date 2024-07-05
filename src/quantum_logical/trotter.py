@@ -76,7 +76,7 @@ class TrotterGroup:
             fractional_unitary = fractional_matrix_power(
                 discrete_unitary, 1 / num_steps
             )
-
+        states = []
         for _ in range(num_steps):
             # Apply each continuous operator
             for op in self.continuous_operators:
@@ -87,5 +87,6 @@ class TrotterGroup:
                 state_numpy = (
                     fractional_unitary @ state_numpy @ fractional_unitary.T.conj()
                 )
-
-        return Qobj(state_numpy, dims=state.dims) / np.trace(state_numpy)
+            states.append(Qobj(state_numpy, dims=state.dims) / np.trace(state_numpy))
+        # return Qobj(state_numpy, dims=state.dims) / np.trace(state_numpy)
+        return states

@@ -24,8 +24,8 @@ class Module_build():
 
         w1_un = 4
         w2_un = 6
-        w3_un = 4.000000000001
-        w4_un = 5.999999999999
+        w3_un = 4.0000000000000000000000000000000000000000000000000000000000000000000001
+        w4_un = 5.9999999999999999999999999999999999999999999999999999999999999999999999
         ws_un = 6 - (1 / 3) * (1 / 2)
 
 
@@ -110,16 +110,19 @@ class Module_build():
         qubit4_adj_qubit1_H
         ]
 
-        H_addition = [
-        qs.modes_a[qubit1] * qs.modes_a_dag[qubit2],
-        qs.modes_a[qubit2] * qs.modes_a_dag[qubit1]
-        ]
-
         H_modified = []
-        def choose_lambda(choice, H_addeds):
-            H_modified.clear()
-            for i in H_addeds:
-                H_modified.append(6 * (l1 ** choice) * i)
+        def choose_lambda(choice):
+            for i in range(len(H_added)):
+                if(choice == 2):
+                    H_modified.append(6 * (l1**2) * H_added[i])
+                elif(choice == 3):
+                    H_modified.append(6 * (l1**3) * H_added[i])
+                elif(choice == 4):
+                    H_modified.append(6 * (l1**4) * H_added[i])
+                elif(choice == 5):
+                    H_modified.append(6 * (l1**5) * H_added[i])
+                elif(choice == 6):
+                    H_modified.append(6 * (l1**6) * H_added[i])
 
             return H_modified
 
@@ -127,9 +130,8 @@ class Module_build():
         # combine all of the hamiltonian terms into one list
         H_total = []
         H_total.extend(H_main_qubits)
-        H_total.extend(choose_lambda(2, H_addeds=H_added))
         # call in the function 
-        H_mod = choose_lambda(self.choice, H_addeds=H_addition)
+        H_mod = choose_lambda(self.choice)
         lambda_power.append(self.choice)
         H_total.extend(H_mod)
 
@@ -180,36 +182,19 @@ class Module_build():
 
         # determine the amount of modules in the system 
         # takes care of the hamiltonian terms and the pulse terms 
-        # def mod_amount(count):
-        #     H_tot = []
-        #     ts = []
-        #     ts.append(T_mult[0])
-        #     # ts.append(T_mult[1])
-        #     # ts.append(T_mult[2])
-        #     H_tot.extend(H_main_qubits[0])# !
-        #     for _ in range(count):
-        #         for i in range(1, len(H_total)):
-        #             H_tot.append(H_total[i])
-        #             ts.append(T_mult[i])
-
-        #     return [H_tot, ts]
-        
         def mod_amount(count):
             H_tot = []
             ts = []
-            for i in range(len(H_total) - len(H_addition)): 
-                ts.append(T_mult[i])
-                H_tot.append(H_total[i])
-                # this is how I have added in the original portions of the hamiltonian 
-            # now you have to add the other parts of the hamiltonian
-            for _ in range(count):
-                ts.append(T_mult[1])
-                ts.append(T_mult[2])
-                H_tot.append(H_total[11])
-                H_tot.append(H_total[12])
+            ts.append(T_mult[0])
+            ts.append(T_mult[1])
+            ts.append(T_mult[2])
+            H_tot.extend(H_main_qubits)
+            for j in range(count):
+                for i in range(3,len(H_total)):
+                    H_tot.append(H_total[i])
+                    ts.append(T_mult[i])
 
             return [H_tot, ts]
-
 
         res = mod_amount(self.word)
 
@@ -240,7 +225,7 @@ class Module_build():
 
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
-        amps = np.linspace(0, 8, 100)
+        amps = np.linspace(0,8,100)
         results = []
         fids = []
 

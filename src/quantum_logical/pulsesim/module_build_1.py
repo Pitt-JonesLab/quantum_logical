@@ -1,22 +1,25 @@
 import numpy as np
-from qutip import Options, ket2dm
 import qutip as qt
+
+import numpy as np
+from qutip import Options
+import qutip as qt
+from qutip import ket2dm
 from quantum_logical.pulsesim import QuantumSystem, Pulse
 from quantum_logical.pulsesim.mode import QubitMode, SNAILMode, CavityMode
-from quantum_logical.pulsesim.build_hamiltonian import Build_hamiltonian
 import matplotlib.pyplot as plt
 from itertools import product
 from tqdm.notebook import tqdm
 import cmath
-from qutip.qip.operations import iswap
 from scipy.optimize import curve_fit
 
 
 class Module_build():
-    def __init__(self, dim, lam_power, mod_count):
+    def __init__(self, dim, lam_power, mod_count, lam_mag):
         self.choice = lam_power
         self.word = mod_count
         self.dim = dim
+        self.lam_mag = lam_mag
 
         lambda_power = []
 
@@ -24,8 +27,8 @@ class Module_build():
 
         w1_un = 4
         w2_un = 6
-        w3_un = 4.000000000001
-        w4_un = 5.999999999999
+        w3_un = 4.000000000000000000000000000000000000000000000000001
+        w4_un = 5.999999999999999999999999999999999999999999999999999
         ws_un = 6 - (1 / 3) * (1 / 2)
 
 
@@ -42,7 +45,7 @@ class Module_build():
             name="q4", dim=self.dim, freq=w4_un, alpha=-0.159, T1=1e2, T2=5e1
         )
         qubits = [qubit1, qubit2, qubit3, qubit4]
-        snail = SNAILMode(mode_type = "Snail", name="s", freq=ws_un, g3=0.3, dim=10, T1=1e3, T2=5e2)
+        snail = SNAILMode(mode_type = "snail", name="s", freq=ws_un, g3=0.3, dim=10, T1=1e3, T2=5e2)
         _couplings = {
             frozenset([qubit1, snail]): 2 * np.pi * 0.05467,
             frozenset([qubit2, snail]): 2 * np.pi * 0.0435,
@@ -52,7 +55,7 @@ class Module_build():
         qs = QuantumSystem(qubits + [snail], couplings=_couplings)
     
         # important multipliers and hamiltonian prefactors 
-        l1 = l2 = l3 = .1
+        l1 = l2 = l3 = lam_mag
 
         w1 = qubit1.freq / (2 * np.pi) 
         w2 = qubit2.freq / (2 * np.pi) 
@@ -67,13 +70,8 @@ class Module_build():
         # wp = w1 - w2
         wp = w2 - w1
 
-        # # unchanged terms of hamiltonian
+        # unchanged terms of hamiltonian
         H_no_time = 6*(l1**2)*(qs.modes_a[qubit1]*qs.modes_a_dag[qubit2] + qs.modes_a[qubit2]*qs.modes_a_dag[qubit1])
-
-        # using the class created to build the hamiltonian 
-        # first and second are involved in the driving and the third and the fourth are the spectating ones
-        # Hs = Build_hamiltonian(l1, qs, qubit1, qubit2, qubit3, qubit4)
-        # H_main_qubits = Hs.build_drive_hamiltonian()
 
         #terms that come from the gate that is desired that do not go to one
         qubit1_qubit2_adj_H = 6*(l1**2)*qs.modes_a[qubit1]*qs.modes_a_dag[qubit2]
@@ -85,10 +83,7 @@ class Module_build():
         qubit1_adj_qubit2_H
         ]
 
-        # building the added terms 
-        # H_added = Hs.build_drive_hamiltonian()
-
-        # # cell that will determine over which lambda power to evaluate
+        # cell that will determine over which lambda power to evaluate
 
         qubit3_qubit2_adj_H = qs.modes_a[qubit3]*qs.modes_a_dag[qubit2]
         qubit3_adj_qubit2_H = qs.modes_a[qubit2]*qs.modes_a_dag[qubit3]
@@ -110,16 +105,20 @@ class Module_build():
         qubit4_adj_qubit1_H
         ]
 
-        H_addition = [
-        qs.modes_a[qubit1] * qs.modes_a_dag[qubit2],
-        qs.modes_a[qubit2] * qs.modes_a_dag[qubit1]
-        ]
-
         H_modified = []
-        def choose_lambda(choice, H_addeds):
-            H_modified.clear()
-            for i in H_addeds:
-                H_modified.append(6 * (l1 ** choice) * i)
+        def choose_lambda(choice):
+            for i in range(len(H_added)):
+                # if(choice == 2):
+                #     H_modified.append(6 * (l1**2) * H_added[i])
+                # elif(choice == 3):
+                #     H_modified.append(6 * (l1**3) * H_added[i])
+                # elif(choice == 4):
+                #     H_modified.append(6 * (l1**4) * H_added[i])
+                # elif(choice == 5):
+                #     H_modified.append(6 * (l1**5) * H_added[i])
+                # elif(choice == 6):
+                #     H_modified.append(6 * (l1**6) * H_added[i])
+                H_modified.append(6 * (l1**choice) * H_added[i])
 
             return H_modified
 
@@ -127,9 +126,8 @@ class Module_build():
         # combine all of the hamiltonian terms into one list
         H_total = []
         H_total.extend(H_main_qubits)
-        H_total.extend(choose_lambda(2, H_addeds=H_added))
         # call in the function 
-        H_mod = choose_lambda(self.choice, H_addeds=H_addition)
+        H_mod = choose_lambda(self.choice)
         lambda_power.append(self.choice)
         H_total.extend(H_mod)
 
@@ -180,36 +178,19 @@ class Module_build():
 
         # determine the amount of modules in the system 
         # takes care of the hamiltonian terms and the pulse terms 
-        # def mod_amount(count):
-        #     H_tot = []
-        #     ts = []
-        #     ts.append(T_mult[0])
-        #     # ts.append(T_mult[1])
-        #     # ts.append(T_mult[2])
-        #     H_tot.extend(H_main_qubits[0])# !
-        #     for _ in range(count):
-        #         for i in range(1, len(H_total)):
-        #             H_tot.append(H_total[i])
-        #             ts.append(T_mult[i])
-
-        #     return [H_tot, ts]
-        
         def mod_amount(count):
             H_tot = []
             ts = []
-            for i in range(len(H_total) - len(H_addition)): 
-                ts.append(T_mult[i])
-                H_tot.append(H_total[i])
-                # this is how I have added in the original portions of the hamiltonian 
-            # now you have to add the other parts of the hamiltonian
+            ts.append(T_mult[0])
+            ts.append(T_mult[1])
+            ts.append(T_mult[2])
+            H_tot.extend(H_main_qubits)
             for _ in range(count):
-                ts.append(T_mult[1])
-                ts.append(T_mult[2])
-                H_tot.append(H_total[11])
-                H_tot.append(H_total[12])
+                for i in range(3,len(H_total)):
+                    H_tot.append(H_total[i])
+                    ts.append(T_mult[i])
 
             return [H_tot, ts]
-
 
         res = mod_amount(self.word)
 
@@ -219,7 +200,7 @@ class Module_build():
 
         # build the desired unitary 
         # U_targ = U = qt.tensor(qt.qip.operations.iswap(N=2),qt.qeye(2),qt.identity(cavity.dim))
-        desired_U = iswap()  # The iSWAP gate for a 2-qubit system
+        desired_U = qt.qip.operations.iswap()  # The iSWAP gate for a 2-qubit system
 
         # Create isometries for qubit 1 and qubit 2 to extend the {g, e} subspace action to the full qubit space
         identity_isometry = (
@@ -240,7 +221,7 @@ class Module_build():
 
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
-        amps = np.linspace(0, 8, 100)
+        amps = np.linspace(0,8,100)
         results = []
         fids = []
 
@@ -254,7 +235,7 @@ class Module_build():
             w = sum(Z)
             U_propagator = (-1j * w).expm()
 
-            # calculate the fidelity
+            #calculate the fidelity
             fid = np.abs(qt.average_gate_fidelity(desired_U, U_propagator))
             results.append([i,fid])
             fids.append(fid)
@@ -275,6 +256,7 @@ class Create_plots():
         fig, ax = plt.subplots()
         ax.set_xlabel("power of lambda")
         ax.set_ylabel("fidelity")
+        ax.set_yscale('log')
         ax.set_title("fidelity vs the power of lambda, module number: %s" % self.num_module)
         ax.plot(self.x, self.y)
         

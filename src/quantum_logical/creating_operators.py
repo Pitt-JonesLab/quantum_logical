@@ -31,6 +31,19 @@ class Creating_operators():
         op_matrix[qubit1_to * self.qubit_dim + qubit2_to, qubit1_from * self.qubit_dim + qubit2_from] = 1
 
         return Qobj(op_matrix)
+    
+    def cnot_op(self, control, targets):
+        op = np.zeros((self.hilbert_dim, self.hilbert_dim))
+        for i in range(self.hilbert_dim):
+            if (i == ((3 * control) + targets[1]) or i == ((3 * control) + targets[0])) :
+                op[i ,i] = 0
+            else:
+                op[i, i] = 1
+
+        op[(3 * control) + targets[1], (3 * control) + targets[0]] = 1
+        op[(3 * control) + targets[0], (3 * control) + targets[1]] = 1
+
+        return Qobj(op)
 
     def total_operator(self, coeff_list, ops_list):
 
