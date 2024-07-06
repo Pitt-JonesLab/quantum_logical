@@ -1,14 +1,17 @@
 import numpy as np
-from qutip import Options, ket2dm
 import qutip as qt
+
+import numpy as np
+from qutip import Options
+import qutip as qt
+from qutip import ket2dm
 from quantum_logical.pulsesim import QuantumSystem, Pulse
 from quantum_logical.pulsesim.mode import QubitMode, SNAILMode, CavityMode
-from quantum_logical.pulsesim.build_hamiltonian import Build_hamiltonian
 import matplotlib.pyplot as plt
 from itertools import product
+from qutip_qip.operations import iswap
 from tqdm.notebook import tqdm
 import cmath
-from qutip_qip.operations import iswap
 from scipy.optimize import curve_fit
 
 
@@ -24,8 +27,8 @@ class Module_build():
 
         w1_un = 4
         w2_un = 6
-        w3_un = 4.0000000001
-        w4_un = 5.9999999999
+        w3_un = 4.000001
+        w4_un = 5.999999
         ws_un = 6 - (1 / 3) * (1 / 2)
 
 
@@ -42,7 +45,7 @@ class Module_build():
             name="q4", dim=self.dim, freq=w4_un, alpha=-0.159, T1=1e2, T2=5e1
         )
         qubits = [qubit1, qubit2, qubit3, qubit4]
-        snail = SNAILMode(mode_type = "Snail", name="s", freq=ws_un, g3=0.3, dim=10, T1=1e3, T2=5e2)
+        snail = SNAILMode(mode_type = "snail", name="s", freq=ws_un, g3=0.3, dim=10, T1=1e3, T2=5e2)
         _couplings = {
             frozenset([qubit1, snail]): 2 * np.pi * 0.05467,
             frozenset([qubit2, snail]): 2 * np.pi * 0.0435,
@@ -67,13 +70,8 @@ class Module_build():
         # wp = w1 - w2
         wp = w2 - w1
 
-        # # unchanged terms of hamiltonian
+        # unchanged terms of hamiltonian
         H_no_time = 6*(l1**2)*(qs.modes_a[qubit1]*qs.modes_a_dag[qubit2] + qs.modes_a[qubit2]*qs.modes_a_dag[qubit1])
-
-        # using the class created to build the hamiltonian 
-        # first and second are involved in the driving and the third and the fourth are the spectating ones
-        # Hs = Build_hamiltonian(l1, qs, qubit1, qubit2, qubit3, qubit4)
-        # H_main_qubits = Hs.build_drive_hamiltonian()
 
         #terms that come from the gate that is desired that do not go to one
         qubit1_qubit2_adj_H = 6*(l1**2)*qs.modes_a[qubit1]*qs.modes_a_dag[qubit2]
@@ -85,10 +83,7 @@ class Module_build():
         qubit1_adj_qubit2_H
         ]
 
-        # building the added terms 
-        # H_added = Hs.build_drive_hamiltonian()
-
-        # # cell that will determine over which lambda power to evaluate
+        # cell that will determine over which lambda power to evaluate
 
         qubit3_qubit2_adj_H = qs.modes_a[qubit3]*qs.modes_a_dag[qubit2]
         qubit3_adj_qubit2_H = qs.modes_a[qubit2]*qs.modes_a_dag[qubit3]
@@ -226,7 +221,7 @@ class Module_build():
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
         amps = np.linspace(0,8,100)
-        result = []
+        results = []
         fids = []
 
         for i in amps:
@@ -239,9 +234,9 @@ class Module_build():
             w = sum(Z)
             U_propagator = (-1j * w).expm()
 
-            # calculate the fidelity
+            #calculate the fidelity
             fid = np.abs(qt.average_gate_fidelity(desired_U, U_propagator))
-            result.append([i, fid])
+            results.append([i,fid])
             fids.append(fid)
 
         self.a = max(fids)
