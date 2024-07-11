@@ -132,3 +132,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+src/notebooks/03_propagator.ipynb

@@ -27,8 +27,8 @@ class Module_build():
 
         w1_un = 4
         w2_un = 6
-        w3_un = 4.000001
-        w4_un = 5.999999
+        w3_un = 4.000000001
+        w4_un = 5.999999999
         ws_un = 6 - (1 / 3) * (1 / 2)
 
 
@@ -93,6 +93,8 @@ class Module_build():
         qubit3_adj_qubit1_H = qs.modes_a[qubit1]*qs.modes_a_dag[qubit3]
         qubit4_qubit1_adj_H = qs.modes_a[qubit4]*qs.modes_a_dag[qubit1]
         qubit4_adj_qubit1_H = qs.modes_a[qubit1]*qs.modes_a_dag[qubit4]
+        qubit3_qubit4_adj_H = qs.modes_a[qubit3]*qs.modes_a_dag[qubit4]
+        qubit3_adj_qubit4_H = qs.modes_a[qubit4]*qs.modes_a_dag[qubit3]
 
         H_added = [
         qubit3_qubit2_adj_H,
@@ -102,7 +104,9 @@ class Module_build():
         qubit3_qubit1_adj_H,
         qubit3_adj_qubit1_H,
         qubit4_qubit1_adj_H,
-        qubit4_adj_qubit1_H
+        qubit4_adj_qubit1_H, 
+        qubit3_qubit4_adj_H,
+        qubit3_adj_qubit4_H
         ]
 
         H_modified = []
@@ -159,6 +163,8 @@ class Module_build():
         qubit2_qubit4_adj_val = int_func(w2,w4,wp,T) + int_func_conj_wp(w2,w4,wp,T)
         qubit1_adj_qubit4_val = int_func(w4,w1,wp,T) + int_func_conj_wp(w4,w1,wp,T)
         qubit2_adj_qubit4_val = int_func(w4,w2,wp,T) + int_func_conj_wp(w4,w2,wp,T)
+        qubit3_qubit4_adj_val = int_func(w3,w4,wp,T) + int_func_conj_wp(w3,w4,wp,T)
+        qubit3_adj_qubit4_val = int_func(w4,w3,wp,T) + int_func_conj_wp(w4,w3,wp,T)
 
         # building the time_multiplier list 
         T_mult = [
@@ -172,7 +178,9 @@ class Module_build():
         qubit1_adj_qubit3_val,
         qubit1_qubit3_adj_val,
         qubit1_adj_qubit4_val,
-        qubit1_qubit4_adj_val
+        qubit1_qubit4_adj_val,
+        qubit3_qubit4_adj_val,
+        qubit3_adj_qubit4_val
         ]
 
         # determine the amount of modules in the system 
@@ -185,7 +193,7 @@ class Module_build():
             ts.append(T_mult[2])
             H_tot.extend(H_main_qubits)
             for j in range(count):
-                for i in range(3,len(H_total)):
+                for i in range(3, len(H_total)):
                     H_tot.append(H_total[i])
                     ts.append(T_mult[i])
 
@@ -220,7 +228,7 @@ class Module_build():
 
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
-        amps = np.linspace(0,8,100)
+        amps = np.linspace(0, 2, 200)
         results = []
         fids = []
 
@@ -236,7 +244,7 @@ class Module_build():
 
             #calculate the fidelity
             fid = np.abs(qt.average_gate_fidelity(desired_U, U_propagator))
-            results.append([i,fid])
+            results.append([i, fid])
             fids.append(fid)
 
         self.a = max(fids)
