@@ -16,10 +16,12 @@ from scipy.optimize import curve_fit
 
 
 class Module_build():
-    def __init__(self, dim, lam_power, mod_count):
+    def __init__(self, dim, lam_power, mod_count, lam_mag, amp):
         self.choice = lam_power
         self.word = mod_count
         self.dim = dim
+        self.lam_mag = lam_mag
+        self.amp = amp
 
         lambda_power = []
 
@@ -55,7 +57,7 @@ class Module_build():
         qs = QuantumSystem(qubits + [snail], couplings=_couplings)
     
         # important multipliers and hamiltonian prefactors 
-        l1 = l2 = l3 = .3
+        l1 = l2 = l3 = self.lam_mag
 
         w1 = qubit1.freq / (2 * np.pi) 
         w2 = qubit2.freq / (2 * np.pi) 
@@ -228,7 +230,7 @@ class Module_build():
 
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
-        amps = np.linspace(0, .3, 300)
+        amps = np.linspace(0, self.amp, 300)
         results = []
         fids = []
 
