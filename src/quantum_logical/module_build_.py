@@ -55,7 +55,7 @@ class Module_build():
         qs = QuantumSystem(qubits + [snail], couplings=_couplings)
     
         # important multipliers and hamiltonian prefactors 
-        l1 = l2 = l3 = .1
+        l1 = l2 = l3 = .3
 
         w1 = qubit1.freq / (2 * np.pi) 
         w2 = qubit2.freq / (2 * np.pi) 
@@ -228,7 +228,7 @@ class Module_build():
 
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
-        amps = np.linspace(0, 2, 200)
+        amps = np.linspace(0, .3, 300)
         results = []
         fids = []
 
