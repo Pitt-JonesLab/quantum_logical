@@ -177,11 +177,18 @@ class Test_freq:
             plt.show()
 
             # create the optimizer and then run the result of the optimizer in the bar below
+<<<<<<< Updated upstream
         detuning = np.linspace(-.07, .07, 30)
         amp = np.linspace(8, 16, 30)
         amp_detuning = [(i, j) for i in detuning for j in amp]
         self.fids = []
         self.fids.clear()
+=======
+        detuning = np.linspace(-.059, .059, 20)
+        amp = np.linspace(0, 16, 20)
+
+        amp_detuning = [(i, j) for i in detuning for j in amp]
+>>>>>>> Stashed changes
 
         results = qt.parallel.parallel_map(self.sim_task, amp_detuning, progress_bar='enhanced')
 
@@ -223,7 +230,10 @@ class Test_freq:
         me_result = self.mesolve_task((self.wp + detuning, amp))
         fid = self.extract_state_fidelity(me_result)
 
+<<<<<<< Updated upstream
         self.fids.append(fid)
+=======
+>>>>>>> Stashed changes
         return [detuning, amp, fid]
     
     def result(self, result):
