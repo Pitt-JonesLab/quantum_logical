@@ -222,10 +222,6 @@ class Test_freq:
         me_result = self.mesolve_task((self.wp + detuning, amp))
         fid = self.extract_state_fidelity(me_result)
 
-<<<<<<< Updated upstream
-        self.fids.append(fid)
-=======
->>>>>>> Stashed changes
         return [detuning, amp, fid]
     
     def result(self, result):
