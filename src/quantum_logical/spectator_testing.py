@@ -12,10 +12,10 @@ from qutip.qip.operations import iswap
 from scipy.optimize import curve_fit
 
 class spectator():
-    def __init__(self, qubit_3, lam_power):
+    def __init__(self, qubit_3, lam_power, lam_mag, amp):
         self.qubit_3 = qubit_3
         self.lam_power = lam_power
-
+        self.lam_mag = lam_mag
         lambda_power = []
 
         # build the four qubit system
@@ -56,7 +56,7 @@ class spectator():
         qs = QuantumSystem(qubits + [snail], couplings=_couplings)
 
         # important multipliers and hamiltonian prefactors 
-        l1 = l2 = l3 = .1
+        l1 = l2 = l3 = self.lam_mag
 
         w1 = qubit1.freq / (2 * np.pi) 
         w2 = qubit2.freq / (2 * np.pi) 
@@ -253,15 +253,17 @@ class spectator():
         # The extended_iswap_q1_q2 now acts as the desired iSWAP gate on {g, e} of qubits 1 and 2, and as identity on the rest
         desired_U = extended_q1_q2
 
+        self.amp = amp
+
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
-        amps = np.linspace(0, 2, 300)
+        amps = np.linspace(0, self.amp, 300)
         results = []
         fids = []
         i_count = []
 
         # non-optimization cell 
-        eta = ((2 * wp) / ((wp**2) - (ws**2))) * 1.9665551839464883
+        eta = ((2 * wp) / ((wp**2) - (ws**2))) * self.amp
         Z = []
         Z.clear()
         for j in range(len(H)):
