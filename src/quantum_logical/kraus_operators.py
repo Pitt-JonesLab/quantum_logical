@@ -2,11 +2,12 @@ import qutip as qt
 from qutip import tensor, basis
 import numpy as np
 from quantum_logical.trotterization import Trotterization
+# there is circular importation that needs fixed 
+
 
 class Kraus_operators(Trotterization):
-    def __init__(self, trotter_dt, T1, T2, dim, num_qubits):
-        super().__init__(trotter_dt, T1, T2, dim, num_qubits)
-
+    def __init__(self, trotter_dt, T1, T2, dim, num_qubits, qudits):
+        super().__init__(trotter_dt, T1, T2, dim, num_qubits, qudits)
         return None
     
     def channel(self):
@@ -23,22 +24,49 @@ class Kraus_operators(Trotterization):
         # create all of the error channels for t1 first 
         Errors = []
         Errors1 = []
-        num_qubits = self.num_qubits
 
 
         kraus1 = [a, b]
         kraus2 = [c, d]
         from itertools import zip_longest
-        # creating identity built on the size of qubits but not yet tensored together 
-        for i in range(num_qubits):
+        # creating identity built on the size of qubits but not yet tensored together
+        for i in range(self.num_qubits):
             for k, j in zip_longest(kraus1, kraus2):
-                identity = [qt.qeye(self.dim) for _ in range(num_qubits)]
-                identity2 = [qt.qeye(self.dim) for _ in range(num_qubits)]
+                identity = [qt.qeye(self.dim) for _ in range(self.num_qubits)]
+                identity2 = [qt.qeye(self.dim) for _ in range(self.num_qubits)]
                 identity[i] = k
                 identity2[i] = j
-                Errors.append(1 / np.sqrt(num_qubits) * tensor(identity))
-                Errors1.append(1 / np.sqrt(num_qubits) * tensor(identity2))
+                Errors.append(1 / np.sqrt(self.num_qubits) * tensor(identity))
+                Errors1.append(1 / np.sqrt(self.num_qubits) * tensor(identity2))
 
         
 
         return Errors, Errors1
+    
+    def channel_qutrit(self):
+        "build the same kraus operators but this time for a qutrit"
+
+        # Simplified transition rates
+        _fe = _eg = 1 - np.exp(-self.trotter_dt / self.T1)
+        _fg = 0  # Neglected direct transition from f to g
+
+        # Simplified Kraus operators for amplitude dampening only 
+        A_01 = np.sqrt(_eg) * np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
+        A_12 = np.sqrt(_fe) * np.array([[0, 0, 0], [0, 0, 1], [0, 0, 0]])
+        A_02 = np.sqrt(_fg) * np.array([[0, 0, 1], [0, 0, 0], [0, 0, 0]])
+        A_0 = (
+            np.array([[1, 0, 0], [0, 0, 0], [0, 0, 0]])
+            + np.sqrt(1 - _eg) * np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+            + np.sqrt(1 - _fg - _fe)
+            * np.array([[0, 0, 0], [0, 0, 0], [0, 0, 1]])
+        )
+        Errors = []
+        kraus_ops = [qt.Qobj(A_0), qt.Qobj(A_01), qt.Qobj(A_12), qt.Qobj(A_02)]
+        for i in range(self.num_qubits):
+            for j in kraus_ops:
+                identity = [qt.qeye(self.dim) for _ in range(self.num_qubits)]
+                identity[i] = j
+                Errors.append(1 / np.sqrt(self.num_qubits) * tensor(identity))
+
+        return Errors
+        return [A_0, A_01, A_12, A_02]

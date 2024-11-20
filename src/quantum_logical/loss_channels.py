@@ -8,6 +8,7 @@ from quantum_logical.trotterization import Trotterization
 # single qubit operation
 # make this more general to different losses for different qubits 
 # this should have now fixed the trotterization now you need to integrate it into the system 
+# this needs rewritten it is so sloppy
 
 class Loss_channel(Trotterization):
     def __init__(self, trotter_dt, T1, T2, dim, num_qubits):
@@ -53,7 +54,7 @@ class Loss_channel(Trotterization):
 
             # Errors = [1 / np.sqrt(num_qubits) * error for error in Errors]
             # Errors1 = [1 / np.sqrt(num_qubits) * error for error in Errors1]
-
+56
         return Errors, Errors1
 
 
