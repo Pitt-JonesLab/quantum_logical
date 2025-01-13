@@ -231,7 +231,7 @@ if __name__ == "__main__":
     cnots, correction_z, hada_layer, x_layer, vectors = gate(dim=dim, N=N) 
     rho_encoded, ref_state = state(alpha=0, beta=1, dim=dim, hada_layer=hada_layer, cnots=[cnots[0], cnots[1]], state_choice="202")
 
-    iterations = 300
+    iterations = 5
     t1_list = np.linspace(.1, 120, iterations)
     cnots = [cnots[2], cnots[3], cnots[4], cnots[5]]
 
@@ -244,7 +244,6 @@ if __name__ == "__main__":
     with mp.Pool() as pool:
         results = list(pool.map(sim_func, values))
     print("finished parallelization")
-    print(results)
 
     # data organization 
     fid_pre_correction = []
