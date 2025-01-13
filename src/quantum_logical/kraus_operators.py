@@ -68,5 +68,58 @@ class Kraus_operators(Trotterization):
                 identity[i] = j
                 Errors.append(1 / np.sqrt(self.num_qubits) * tensor(identity))
 
-        return Errors
-        return [A_0, A_01, A_12, A_02]
+        E_0 = qt.Qobj([[1,0,0],[0, np.sqrt(1-_fe), 0],[0,0,np.sqrt(1-_fe)]])
+        E_1 = qt.Qobj([[0,0,0],[0,np.sqrt(_fe), 0],[0,0,0]])
+        E_2 = qt.Qobj([[0,0,0],[0,0, 0],[0,0,np.sqrt(_fe)]])
+        Errors2 = []
+        Kraus_ops2 = [E_0, E_1, E_2]
+        for i in range(self.num_qubits):
+            for j in Kraus_ops2:
+                identity = [qt.qeye(self.dim) for _ in range(self.num_qubits)]
+                identity[i] = j
+                Errors2.append(1 / np.sqrt(self.num_qubits) * tensor(identity))
+        
+        return Errors, Errors2
+
+    def channel_ququart(self):
+        # Simplified transition rates
+        _hf = _fe = _eg = 1 - np.exp(-self.trotter_dt / self.T1)
+        _hg = _he = _fg = 0  # Neglected direct transition from f to g
+        # need to have one level transitions
+        # Simplified Kraus operators for amplitude dampening only 
+        A_01 = np.sqrt(_eg) * np.array([[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        A_12 = np.sqrt(_fe) * np.array([[0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        A_02 = np.sqrt(_fg) * np.array([[0, 0, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        A_03 = np.sqrt(_hg) * np.array([[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        A_13 = np.sqrt(_he) * np.array([[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0]])
+        A_23 = np.sqrt(_hf) * np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0]])
+        A_0 = (
+            np.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+            + np.sqrt(1 - _eg) * np.array([[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+            + np.sqrt(1 - _fg - _fe)
+            * np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]])
+            + np.sqrt(1 - _hg - _he - _hf)
+            * np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]])
+        )
+        Errors = []
+        kraus_ops = [qt.Qobj(A_0), qt.Qobj(A_01), qt.Qobj(A_12), qt.Qobj(A_02), qt.Qobj(A_03), qt.Qobj(A_13), qt.Qobj(A_23)]
+        for i in range(self.num_qubits):
+            for j in kraus_ops:
+                identity = [qt.qeye(self.dim) for _ in range(self.num_qubits)]
+                identity[i] = j
+                Errors.append(1 / np.sqrt(self.num_qubits) * tensor(identity))
+
+        E_0 = qt.Qobj([[1, 0, 0, 0],[0, np.sqrt(1-_hf), 0, 0],[0, 0, np.sqrt(1-_hf), 0], [0, 0, 0, np.sqrt(1-_hf)]])
+        E_1 = qt.Qobj([[0, 0, 0, 0],[0, np.sqrt(_hf), 0, 0],[0, 0, 0, 0], [0, 0, 0, 0]])
+        E_2 = qt.Qobj([[0, 0, 0, 0],[0, 0, 0, 0],[0, 0, np.sqrt(_hf), 0], [0, 0, 0, 0]])
+        E_3 = qt.Qobj([[0, 0, 0, 0],[0, 0, 0, 0],[0, 0, 0, 0], [0, 0, 0, np.sqrt(_hf)]])
+
+        Errors2 = []
+        Kraus_ops2 = [E_0, E_1, E_2, E_3]
+        for i in range(self.num_qubits):
+            for j in Kraus_ops2:
+                identity = [qt.qeye(self.dim) for _ in range(self.num_qubits)]
+                identity[i] = j
+                Errors2.append(1 / np.sqrt(self.num_qubits) * tensor(identity))
+        
+        return Errors, Errors2
