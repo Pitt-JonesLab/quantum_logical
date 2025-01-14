@@ -18,12 +18,12 @@ def gate( dim, N):
     cnot1 = cnot_create.Cnot(dim=3, target=1, control=0, high=2, low=0)
     cnot2 = cnot_create.Cnot(dim=3, target=2, control=0, high=2, low=0)
 
-    cnot3 = cnot_create.Cnot(dim=3, target=3, control=0, high=1, low=0)
-    cnot4 = cnot_create.Cnot(dim=3, target=3, control=1, high=1, low=0)
+    cnot3 = cnot_create.Cnot(dim=3, target=3, control=0, high=2, low=0)
+    cnot4 = cnot_create.Cnot(dim=3, target=3, control=1, high=2, low=0)
     
 
-    cnot5 = cnot_create.Cnot(dim=3, target=4, control=1, high=1, low=0)
-    cnot6 = cnot_create.Cnot(dim=3, target=4, control=2, high=1, low=0)
+    cnot5 = cnot_create.Cnot(dim=3, target=4, control=1, high=2, low=0)
+    cnot6 = cnot_create.Cnot(dim=3, target=4, control=2, high=2, low=0)
 
     # the x_gate needs to be made in a qutrit gate and will involve conversion 
     x_gate = qt.Qobj([[0, 1],[1, 0]])
@@ -110,7 +110,6 @@ def state(qubit_choice, N, alpha, beta, qubit_ref, dim):
     
     return rho, ref_state
 
-
 def sim_func(values):
 
     cnots = values[0]
@@ -138,9 +137,9 @@ def sim_func(values):
     no_error_states = []
 
     # gate setups 
-    gates = [[x_layer], [cnot3], [cnot4], [cnot5], [cnot6], [x_layer]]
-    cnot_time = .5
-    gate_times = [.025, cnot_time, cnot_time, cnot_time, cnot_time, .025]
+    gates = [[cnot3], [cnot4], [cnot5], [cnot6]]
+    cnot_time = 1
+    gate_times = [cnot_time, cnot_time, cnot_time, cnot_time]
     # gates = [[x_layer], [cnot3, cnot5], [cnot4, cnot6], [x_layer]]
     # cnot_time = .5
     # gate_times = [.025, cnot_time, cnot_time, .025]
@@ -163,7 +162,7 @@ def sim_func(values):
 
 
     # projection operators  
-    proj = [qt.tensor(qt.qeye(dim), qt.qeye(dim), qt.qeye(dim), (qt.tensor(qt.basis(dim, i), qt.basis(dim, j)) * (qt.tensor(qt.basis(dim, i), qt.basis(dim, j))).dag())) for i in range(2) for j in range(2)]
+    proj = [qt.tensor(qt.qeye(dim), qt.qeye(dim), qt.qeye(dim), (qt.tensor(qt.basis(dim, i), qt.basis(dim, j)) * (qt.tensor(qt.basis(dim, i), qt.basis(dim, j))).dag())) for i in [0,2] for j in [0,2]]
 
 
     # look into how to get the projection results before moving forward be satisified with it 
@@ -237,59 +236,15 @@ def sim_func(values):
 
     return fid1, detectable_error, uncorrectable_error, fid2
 
-
 import multiprocessing as mp
 if __name__ == "__main__":
     dim = 3
     N = 5
-    # cnots, correction_z, hada_layer, x_layer, vectors = gate(dim=dim, N=N) 
-    # rho_encoded, ref_state = state(alpha=1, beta=0, N=N, qubit_choice=[0,0,2], qubit_ref=[0,0,0])
-
-    # iterations = 5
-    # t1_list = np.linspace(.1, 120, iterations)
-    # cnots = [cnots[2], cnots[3], cnots[4], cnots[5]]
-
-
-    # values = []
-    # for i in range(iterations):
-    #     values.append([cnots, rho_encoded, ref_state, [t1_list[i], t1_list[i]], dim, N, x_layer, correction_z, hada_layer, vectors])
-
-    # # parallelization of the calculation
-    # with mp.Pool() as pool:
-    #     results = list(pool.map(sim_func, values))
-    # print("finished parallelization")
-
-    # # data organization 
-    # fid_pre_correction = []
-    # fid_post_correction = []
-    # detectable_errors = []
-    # uncorrectable_errors = []
-
-    # for res in results:
-    #     fid_pre_correction.append(res[0])
-    #     fid_post_correction.append(res[3])
-    #     detectable_errors.append(res[1])
-    #     uncorrectable_errors.append(res[2])
-
-    # # creating a csv file to store the information 
-    # import csv
-
-
-    # # Writing the arrays to a CSV file
-    # with open('3_wave_cnot_serial.csv', 'w', newline='') as file:
-    #     writer = csv.writer(file)
-    #     writer.writerow(fid_pre_correction)  
-    #     writer.writerow(fid_post_correction)  
-    #     writer.writerow(detectable_errors)  
-    #     writer.writerow(uncorrectable_errors)  
-
-    # print(f"File created: 3_wave_cnot_serial.csv")
-
     # need to average over all of the possible error states for a specific error
     choices = [[1, 0, [2,2,0], [2,2,2]], [1, 0, [0,0,2], [0,0,0]], [1, 1, [2,2,0], [2,2,2]], 
                [1, -1, [2,2,0], [2,2,2]], [1, 1j, [2,2,0], [2,2,2]], [1, -1j, [2,2,0], [2,2,2]]]
-    file_names = ["3_wave_cnot_serial_state.csv", "3_wave_cnot_serial_state_dag.csv", "3_wave_cnot_serial_+_super.csv", 
-                  "3_wave_cnot_serial_-_super.csv", "3_wave_cnot_serial_im_+_super.csv", "3_wave_cnot_serial_im_-_super.csv"]
+    file_names = ["5_wave_cnot_serial_state.csv", "5_wave_cnot_serial_state_dag.csv", "5_wave_cnot_serial_+_super.csv", 
+                  "5_wave_cnot_serial_-_super.csv", "5_wave_cnot_serial_im_+_super.csv", "5_wave_cnot_serial_im_-_super.csv"]
     for choice in choices:
         cnots, correction_z, hada_layer, x_layer, vectors = gate(dim=dim, N=N) 
         rho_encoded, ref_state = state(alpha=choice[0], beta=choice[1], N=N, qubit_choice=choice[2], qubit_ref=choice[3], dim=dim)
@@ -327,7 +282,6 @@ if __name__ == "__main__":
         folder_path = r'C:\Users\girgi\Desktop\Github\quantum_logical\src\notebooks\logical_errors\characterization_sims\csv_files'
         file_path = os.path.join(folder_path, file_names[choices.index(choice)])
         os.chdir(folder_path)
-        print(f"Current working directory: {os.getcwd()}")
 
         # Writing the arrays to a CSV file
         with open(file_names[choices.index(choice)], 'w', newline='') as file:
@@ -338,6 +292,3 @@ if __name__ == "__main__":
             writer.writerow(uncorrectable_errors)  
 
         print(file_names[choices.index(choice)])
-
-
-
