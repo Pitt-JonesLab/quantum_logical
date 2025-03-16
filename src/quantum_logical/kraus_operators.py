@@ -68,6 +68,11 @@ class Kraus_operators(Trotterization):
                 identity[i] = j
                 Errors.append(1 / np.sqrt(self.num_qubits) * tensor(identity))
 
+        Tphi = (1/(1/self.T2 - 1/(2 * self.T1)))
+        # Simplified transition rates
+        _fe = _eg = 1 - np.exp(-self.trotter_dt / Tphi)
+        _fg = 0  # Neglected direct transition from f to g
+
         E_0 = qt.Qobj([[1,0,0],[0, np.sqrt(1-_fe), 0],[0,0,np.sqrt(1-_fe)]])
         E_1 = qt.Qobj([[0,0,0],[0,np.sqrt(_fe), 0],[0,0,0]])
         E_2 = qt.Qobj([[0,0,0],[0,0, 0],[0,0,np.sqrt(_fe)]])

@@ -89,8 +89,6 @@ class Convert_levels():
                 new_vec =  Qobj(np.array([0 if value != i else 1 for value in range(dim)]))
                 spec_vec.append(new_vec)
 
-            # the issue that i am having has to do with the spectator vectors function 
-
             spectator_vectors = list(product(spec_vec, repeat=(self.num_qubits-2)))
             # creating the matrices based on these vectors 
             set_of_vectors = []
@@ -146,3 +144,6 @@ class Convert_levels():
             gate = Qobj(gate, dims=([dim] * self.num_qubits, [dim] * self.num_qubits))
 
             return gate
+
+                    
+            
