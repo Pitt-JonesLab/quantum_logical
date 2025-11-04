@@ -111,20 +111,180 @@ class Module_build():
         qubit3_adj_qubit4_H
         ]
 
+        # H_modified = []
+        # def choose_lambda(choice):
+        #     for i in range(len(H_added)):
+        #         if(choice == 2):
+        #             H_modified.append(6 * (l1**2) * H_added[i])
+        #         elif(choice == 3):
+        #             H_modified.append(6 * (l1**3) * H_added[i])
+        #         elif(choice == 4):
+        #             H_modified.append(6 * (l1**4) * H_added[i])
+        #         elif(choice == 5):
+        #             H_modified.append(6 * (l1**5) * H_added[i])
+        #         elif(choice == 6):
+        #             H_modified.append(6 * (l1**6) * H_added[i])
+
+        #     return H_modified
+
+        # H_modified = []
+        # def choose_lambda(choice):
+        #     if(choice == 2):
+        #         H_added_new = [
+        #             6 * (l1**2) * qubit3_qubit4_adj_H,
+        #             6 * (l1**2) * qubit3_adj_qubit4_H
+        #         ]
+        #     elif(choice == 3):
+        #         H_added_new = [
+        #             6 * (l1**3) * qubit3_qubit4_adj_H,
+        #             6 * (l1**3) * qubit3_adj_qubit4_H
+        #         ]
+        #     elif(choice == 4):
+        #         H_added_new = [
+        #             6 * (l1**4) * qubit3_qubit4_adj_H,
+        #             6 * (l1**4) * qubit3_adj_qubit4_H
+        #         ]
+        #     elif(choice == 5):
+        #         H_added_new = [
+        #             6 * (l1**5) * qubit3_qubit4_adj_H,
+        #             6 * (l1**5) * qubit3_adj_qubit4_H
+        #         ]
+        #     elif(choice == 6):
+        #         H_added_new = [
+        #             6 * (l1**6) * qubit3_qubit4_adj_H,
+        #             6 * (l1**6) * qubit3_adj_qubit4_H
+        #         ]
+        #     elif(choice == 7):
+        #         H_added_new = [
+        #             6 * (l1**7) * qubit3_qubit4_adj_H,
+        #             6 * (l1**7) * qubit3_adj_qubit4_H
+        #         ]
+
+
+        #     H_modified.extend(H_added_new)
+        #     return H_modified
+
         H_modified = []
         def choose_lambda(choice):
-            for i in range(len(H_added)):
-                if(choice == 2):
-                    H_modified.append(6 * (l1**2) * H_added[i])
-                elif(choice == 3):
-                    H_modified.append(6 * (l1**3) * H_added[i])
-                elif(choice == 4):
-                    H_modified.append(6 * (l1**4) * H_added[i])
-                elif(choice == 5):
-                    H_modified.append(6 * (l1**5) * H_added[i])
-                elif(choice == 6):
-                    H_modified.append(6 * (l1**6) * H_added[i])
+            if(choice == 2):
+                H_added_new = [
+                    6 * (l1 ** 2) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 2) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 2) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 2) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 2) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 2) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 2) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 2) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 2) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 2) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 3):
+                H_added_new = [
+                    6 * (l1 ** 2) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 2) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 3) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 3) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 2) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 2) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 3) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 3) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 3) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 3) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 4):
+                H_added_new = [
+                    6 * (l1 ** 2) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 2) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 4) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 4) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 2) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 2) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 4) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 4) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 4) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 4) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 5):
+                H_added_new = [
+                    6 * (l1 ** 3) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 3) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 4) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 4) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 3) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 3) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 4) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 4) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 5) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 5) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 6):
+                H_added_new = [
+                    6 * (l1 ** 4) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 4) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 4) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 4) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 4) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 4) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 4) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 4) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 6) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 6) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 7):
+                H_added_new = [
+                    6 * (l1 ** 4) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 4) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 5) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 5) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 4) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 4) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 5) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 5) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 7) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 7) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 8):
+                H_added_new = [
+                    6 * (l1 ** 4) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 4) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 6) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 6) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 4) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 4) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 6) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 6) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 8) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 8) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 9):
+                H_added_new = [
+                    6 * (l1 ** 5) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 5) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 6) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 6) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 5) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 5) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 6) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 6) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 9) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 9) * qubit3_adj_qubit4_H
+                ]
+            elif(choice == 10):
+                H_added_new = [
+                    6 * (l1 ** 6) * qubit3_qubit2_adj_H,
+                    6 * (l1 ** 6) * qubit3_adj_qubit2_H,
+                    6 * (l1 ** 6) * qubit4_qubit2_adj_H,
+                    6 * (l1 ** 6) * qubit4_adj_qubit2_H,
+                    6 * (l1 ** 6) * qubit3_qubit1_adj_H,
+                    6 * (l1 ** 6) * qubit3_adj_qubit1_H,
+                    6 * (l1 ** 6) * qubit4_qubit1_adj_H,
+                    6 * (l1 ** 6) * qubit4_adj_qubit1_H,
+                    6 * (l1 ** 10) * qubit3_qubit4_adj_H,
+                    6 * (l1 ** 10) * qubit3_adj_qubit4_H
+                ]
 
+            H_modified.extend(H_added_new)
             return H_modified
 
 
@@ -169,21 +329,46 @@ class Module_build():
         qubit3_adj_qubit4_val = int_func(w4,w3,wp,T) + int_func_conj_wp(w4,w3,wp,T)
 
         # building the time_multiplier list 
+        # T_mult = [
+        # T,
+        # qubit1_qubit2_adj_val,
+        # qubit1_adj_qubit2_val,
+        # qubit2_adj_qubit3_val,
+        # qubit2_qubit3_adj_val,
+        # qubit2_adj_qubit4_val,
+        # qubit2_qubit4_adj_val,
+        # qubit1_adj_qubit3_val,
+        # qubit1_qubit3_adj_val,
+        # qubit1_adj_qubit4_val,
+        # qubit1_qubit4_adj_val,
+        # qubit3_qubit4_adj_val,
+        # qubit3_adj_qubit4_val
+        # ]
+        # T_mult = [
+        # T,
+        # qubit1_qubit2_adj_val,
+        # qubit1_adj_qubit2_val,
+        # qubit3_qubit4_adj_val,
+        # qubit3_adj_qubit4_val
+        # ]
+
         T_mult = [
         T,
         qubit1_qubit2_adj_val,
         qubit1_adj_qubit2_val,
-        qubit2_adj_qubit3_val,
+        qubit2_adj_qubit3_val, 
         qubit2_qubit3_adj_val,
         qubit2_adj_qubit4_val,
         qubit2_qubit4_adj_val,
-        qubit1_adj_qubit3_val,
+        qubit1_adj_qubit3_val, 
         qubit1_qubit3_adj_val,
         qubit1_adj_qubit4_val,
         qubit1_qubit4_adj_val,
         qubit3_qubit4_adj_val,
         qubit3_adj_qubit4_val
         ]
+    
+
 
         # determine the amount of modules in the system 
         # takes care of the hamiltonian terms and the pulse terms 
@@ -230,7 +415,7 @@ class Module_build():
 
         # build the designed unitary
         # run the fidelity analysis over the expected gate 
-        amps = np.linspace(0, self.amp, 300)
+        amps = np.linspace(0, self.amp, 50)
         results = []
         fids = []
 
